@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.pyc
+
+# Environment
+.env
+
+# Database
+*.db
+
+# Replit
+.cache/
+.local/
+
+# IDE
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db

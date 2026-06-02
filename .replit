@@ -10,3 +10,6 @@ externalPort = 80
 
 [nix]
 packages = ["freetype", "glibcLocales"]
+
+[agent]
+expertMode = true
