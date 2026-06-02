@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+
+{% block title %}
+Panel de administración
+{% endblock %}
+
+{% block content %}
+
+<div class="dashboard-wrapper">
+    <h1>Panel de administración</h1>
+    
+    <p>
+        Sistema de control de asistencia.
+    </p>
+    
+    <div class="dashboard-grid">
+    
+         
+        <div class="card">
+        
+            <h2>Registro de asistencia</h2>
+        
+            <p>
+                Revisar historial de asistencia y exportar registros.
+            </p>
+        
+            <a
+                href="{{ url_for('asistencia_admin') }}"
+                class="btn btn-primary"
+            >
+                Ver asistencia
+            </a>
+        
+        </div>
+        
+        <div class="card">
+        
+            <h2>Gestión QR</h2>
+        
+            <p>
+                Visualizar código QR, descargar PDF y regenerar token.
+            </p>
+        
+            <a
+                href="{{ url_for('qr') }}"
+                class="btn btn-primary"
+            >
+                Gestionar QR
+            </a>
+        
+        </div>
+        
+        <div class="card">
+        
+            <h2>Personas</h2>
+        
+            <p>
+                Gestionar nómina del formulario. Agregar, editar, activar o desactivar personas.
+            </p>
+        
+            <a
+                href="{{ url_for('personas') }}"
+                class="btn btn-primary"
+            >
+                Ver personas
+            </a>
+        
+        </div>
+        
+        <div class="card">
+        
+            <h2>Configuración</h2>
+        
+            <p>
+                Correo, automatizaciones y configuración del sistema.
+            </p>
+        
+            <p>
+                Próximamente.
+            </p>
+        
+        </div>
+         
+    
+    </div>
+</div>
+
+
+{% endblock %}

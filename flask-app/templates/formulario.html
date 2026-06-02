@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}Formulario de asistencia{% endblock %}
+
+{% block content %}
+
+    <div class="form-card">
+
+        <h2>Registro de Asistencia</h2>
+
+        <form method="POST">
+            <input
+                type="hidden"
+                name="csrf_token"
+                value="{{ session.csrf_token }}"
+            >
+
+            <label for="persona_id">
+                Seleccione su nombre:
+            </label>
+
+            <select name="persona_id" id="persona_id" required>
+
+                <option value="" disabled selected>
+                    Seleccione un nombre de la lista
+                </option>
+
+                {% for persona in personas %}
+
+                    <option value="{{ persona['id'] }}">
+                        {{ persona['nombre'] }}
+                    </option>
+
+                {% endfor %}
+
+            </select>
+
+            <button
+                type="submit"
+                class="btn btn-primary"
+            >
+                Registrar asistencia
+            </button>
+
+        </form>
+
+        {% if mensaje %}
+            <div class="mensaje">
+                {{ mensaje }}
+            </div>
+        {% endif %}
+
+    </div>
+
+{% endblock %}

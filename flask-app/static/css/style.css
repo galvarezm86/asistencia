@@ -1,0 +1,514 @@
+/* === RESET / GLOBALES === */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #f5f5f5;
+    color: #333;
+    min-height: 100vh;
+}
+
+h1 {
+    font-size: 1.8rem;
+    margin-bottom: 1.5rem;
+    color: #2c3e50;
+}
+
+h2 {
+    font-size: 1.4rem;
+    margin-bottom: 1rem;
+    color: #2c3e50;
+}
+
+label {
+    display: block;
+    margin-top: 1rem;
+    margin-bottom: 0.3rem;
+    font-weight: 600;
+}
+
+/* === NAVBAR / NAVEGACIÓN === */
+nav {
+    background: #2c3e50;
+    padding: 0 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 56px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+nav .brand {
+    color: #fff;
+    font-size: 1.2rem;
+    font-weight: 700;
+    text-decoration: none;
+    letter-spacing: 0.5px;
+}
+
+nav a {
+    color: #bdc3c7;
+    text-decoration: none;
+    font-size: 0.9rem;
+    transition: color 0.2s;
+}
+
+nav a:hover {
+    color: #fff;
+}
+
+.nav-left,
+.nav-right {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+.logout-link {
+    background: none;
+    border: none;
+    color: #bdc3c7;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-family: inherit;
+    padding: 0;
+    margin: 0;
+    width: auto;
+}
+
+.logout-link:hover {
+    color: white;
+}
+
+.nav-right form {
+    margin: 0;
+}
+
+.nav-section-link {
+    color: #ecf0f1;
+    font-weight: 600;
+}
+
+.nav-section-link:hover {
+    color: white;
+}
+
+/* === CONTENEDORES / LAYOUT === */
+.container {
+    max-width: 1100px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+}
+
+.dashboard-wrapper {
+    max-width: 1000px;
+    margin: 0 auto;
+}
+
+.dashboard-wrapper h1 {
+    margin-top: 1rem;
+}
+
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(320px, 480px));
+    gap: 1rem;
+    margin-top: 2rem;
+    justify-content: center;
+}
+
+/* === CARDS / FORMULARIOS / BOTONES === */
+.card {
+    background: white;
+    border-radius: 10px;
+    padding: 1.5rem;
+    border: 1px solid #e0e0e0;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.form-card {
+    max-width: 400px;
+    margin: 2rem auto;
+}
+
+.personas-form-card,
+.personas-card {
+    max-width: 700px;
+}
+
+.card:hover, .form-card:hover, .personas-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.card p {
+    margin: 1rem 0;
+    line-height: 1.5;
+}
+
+input, select {
+    width: 100%;
+    padding: 0.7rem;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    margin-top: 0.5rem;
+}
+
+.card form input {
+    margin-bottom: 1rem;
+}
+
+.personas-form-card form,
+.form-card form {
+    margin-top: 1rem;
+}
+
+.add-form {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.add-form input[type="text"] {
+    flex: 1;
+    padding: 0.65rem 1rem;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 1rem;
+    outline: none;
+    transition: border-color 0.2s;
+    background: #fff;
+}
+
+.add-form input[type="text"]:focus {
+    border-color: #2c3e50;
+}
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.65rem 1.2rem;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: background 0.2s, transform 0.1s;
+    text-decoration: none;
+    width: auto;
+}
+
+.btn:active {
+    transform: scale(0.97);
+}
+
+.btn-primary {
+    background: #2c3e50;
+    color: #fff;
+}
+
+.btn-primary:hover {
+    background: #3d5166;
+}
+
+.btn-secondary {
+    background: #ecf0f1;
+    color: #2c3e50;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 42px;
+}
+
+.btn-secondary:hover {
+    background: #dfe6e9;
+}
+
+/* === TABLAS / LISTAS === */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    margin-top: 1rem;
+}
+
+th, td {
+    border: 1px solid #ddd;
+    padding: 0.75rem;
+    text-align: center;
+}
+
+th {
+    background: #2c3e50;
+    color: white;
+}
+
+.personas-lista {
+    margin-top: 1rem;
+}
+
+.persona-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 0;
+    border-bottom: 1px solid #eee;
+}
+
+.persona-nombre {
+    font-weight: 500;
+}
+
+/* === PERSONAS / ACCIONES ESPECÍFICAS === */
+.persona-acciones {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.persona-acciones form {
+    margin: 0;
+    display: inline-flex;
+    align-items: center;
+}
+
+.link-button {
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    width: auto;
+    cursor: pointer;
+    font: inherit;
+    color: #2c3e50;
+    text-decoration: none;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+}
+
+.link-button:hover {
+    text-decoration: underline;
+}
+
+.danger-link {
+    color: #c0392b;
+}
+
+.danger-link:hover {
+    color: #e74c3c;
+}
+
+.success-link {
+    color: #27ae60;
+}
+
+.success-link:hover {
+    color: #2ecc71;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+
+/* === FLASHES === */
+.flash-messages {
+    margin-bottom: 1rem;
+}
+
+.flash {
+    padding: 0.75rem 1rem;
+    border-radius: 6px;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.flash.success {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.flash.info {
+    background: #d1ecf1;
+    color: #0c5460;
+    border: 1px solid #bee5eb;
+}
+
+.flash.error {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+/* === MEDIA QUERIES === */
+@media (max-width: 768px) {
+
+    nav {
+        flex-direction: column;
+        align-items: flex-start;
+        height: auto;
+        padding: 1rem;
+    }
+
+    .container {
+        margin-top: 1rem;
+    }
+
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .form-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .persona-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+    }
+
+    .asistencia-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 1rem;
+    }
+
+}
+
+.qr-image {
+    width: 100%;
+    max-width: 320px;
+
+    margin: 1rem auto;
+
+    display: block;
+
+    border: 1px solid #ddd;
+
+    border-radius: 10px;
+
+    padding: 1rem;
+
+    background: white;
+}
+
+.form-card input,
+.form-card select {
+    width: 100%;
+    max-width: 500px;
+}
+
+.qr-nav-actions {
+    margin-bottom: 2rem;
+}
+
+.qr-image {
+    display: block;
+
+    width: 100%;
+
+    max-width: 450px;
+
+    height: auto;
+
+    margin: 1rem auto;
+}
+
+.asistencia-si {
+    background: #d4edda;
+    color: #155724;
+    font-weight: 600;
+}
+
+
+.asistencia-no {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.tabla-wrapper {
+    overflow-x: auto;
+}
+
+.col-persona {
+    width: 200px;
+    text-align: left;
+    font-weight: 500;
+}
+
+.col-total {
+    width: 20px;
+    font-weight: 700;
+}
+
+.asistencia-si,
+.asistencia-no {
+    width: 50px;
+}
+
+table {
+    border-collapse: collapse;
+    background: white;
+    margin-top: 1rem;
+
+    width: auto;
+    min-width: 100%;
+}
+
+.filtros-form {
+    display: flex;
+    align-items: flex-end;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.filtro-campo {
+    display: flex;
+    flex-direction: column;
+}
+
+.filtro-campo input {
+    width: 150px;
+}
+
+
+.filtro-botones {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+
+    margin-bottom: 0.98rem;
+}
+
+.asistencia-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    margin-top: 1rem;
+    margin-bottom: 1.5rem;
+
+    padding: 0 2rem;
+}
+
+.periodo-actual {
+    color: #666;
+    font-size: 0.95rem;
+    font-weight: 500;
+}

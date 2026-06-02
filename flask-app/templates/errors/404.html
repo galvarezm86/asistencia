@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+
+{% block title %}Página no encontrada{% endblock %}
+
+{% block content %}
+
+<h1>Error 404</h1>
+
+<p>La página solicitada no existe.</p>
+
+<a href="{{ url_for('inicio') }}">Volver al inicio</a>
+
+{% endblock %}

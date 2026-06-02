@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+
+{% block title %}
+Asistencia
+{% endblock %}
+
+{% block nav_section %}
+
+<a
+    href="{{ url_for('asistencia_admin') }}"
+    class="nav-section-link"
+>
+    Asistencia
+</a>
+
+{% endblock %}
+
+{% block content %}
+
+<div class="asistencia-header">
+
+    <div class="periodo-actual">
+
+        {% if desde or hasta %}
+            Período:
+            {{ desde_mostrar or "Inicio" }}
+            -
+            {{ hasta_mostrar or "Hoy" }}
+        {% else %}
+            Período: Completo
+        {% endif %}
+
+    </div>
+
+    <a
+        href="{{ url_for('admin') }}"
+        class="btn btn-secondary"
+    >
+        Volver
+    </a>
+
+</div>
+
+<div class="tabla-wrapper">
+
+    <table>
+
+        <thead>
+
+            <tr>
+
+                <th class="col-persona">
+                    Persona
+                </th>
+
+                {% for fecha in fechas %}
+
+                    <th>
+                        {{ fecha["fecha"][8:10] }}/{{ fecha["fecha"][5:7] }}/{{ fecha["fecha"][2:4] }}
+                    </th>
+
+                {% endfor %}
+
+                <th class="col-total">
+                    Total
+                </th>
+
+            </tr>
+
+        </thead>
+
+        <tbody>
+
+            {% for fila in tabla %}
+
+            <tr>
+
+                <td class="col-persona">
+                    {{ fila.nombre }}
+                </td>
+
+                {% for presente in fila.asistencias %}
+
+                <td class="{% if presente %}asistencia-si{% else %}asistencia-no{% endif %}">
+
+                    {% if presente %}
+                        ✓
+                    {% else %}
+                        ×
+                    {% endif %}
+
+                </td>
+
+                {% endfor %}
+
+                <td class="col-total">
+                    {{ fila.total }}
+                </td>
+
+            </tr>
+
+            {% endfor %}
+
+        </tbody>
+
+    </table>
+
+</div>
+
+<div class="card">
+
+    <h2>Filtros</h2>
+
+    <form method="GET" class="filtros-form">
+
+        <div class="filtro-campo">
+            <label for="desde">Desde</label>
+            <input
+                type="date"
+                id="desde"
+                name="desde"
+                value="{{ desde or '' }}"
+            >
+        </div>
+
+        <div class="filtro-campo">
+            <label for="hasta">Hasta</label>
+            <input
+                type="date"
+                id="hasta"
+                name="hasta"
+                value="{{ hasta or '' }}"
+            >
+        </div>
+
+        <div class="form-actions filtro-botones">
+
+            <button
+                type="submit"
+                class="btn btn-primary"
+            >
+                Aplicar filtro
+            </button>
+
+            <a
+                href="{{ url_for('asistencia_admin') }}"
+                class="btn btn-secondary"
+            >
+                Limpiar filtro
+            </a>
+
+            <a
+                href="{{ url_for(
+                    'exportar_asistencia_excel',
+                    desde=desde,
+                    hasta=hasta
+                ) }}"
+                class="btn btn-primary"
+            >
+                Exportar a Excel
+            </a>
+
+        </div>
+
+    </form>
+
+</div>
+
+{% endblock %}

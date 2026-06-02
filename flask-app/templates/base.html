@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='css/style.css') }}"
+    >
+</head>
+    <body>
+
+        <nav>
+
+            {% if session.admin %}
+    
+                <div class="nav-left">
+    
+                    <a
+                        class="brand"
+                        href="{{ url_for('admin') }}"
+                    >
+                        Panel admin
+                    </a>
+    
+                    {% block nav_section %}{% endblock %}
+    
+                </div>
+
+                <div class="nav-right">
+
+                    <form
+                        method="POST"
+                        action="{{ url_for('logout') }}"
+                    >
+
+                        <input
+                            type="hidden"
+                            name="csrf_token"
+                            value="{{ session.csrf_token }}"
+                        >
+
+                        <button
+                            type="submit"
+                            class="logout-link"
+                        >
+                            Cerrar sesión
+                        </button>
+
+                    </form>
+
+                </div>
+
+            {% else %}
+
+                <div class="nav-left">
+
+                    <span class="brand">
+                        Control asistencia
+                    </span>
+
+                </div>
+
+                <div class="nav-right">
+
+                    <a href="{{ url_for('login') }}">
+                        Iniciar sesión
+                    </a>
+
+                </div>
+
+            {% endif %}
+
+        </nav>
+
+        
+        <main class="main-container">
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+
+                    {% for category, message in messages %}
+                        <div class="flash {{ category }}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+
+                {% endif %}
+            {% endwith %}
+
+            {% block content %}{% endblock %}
+
+        </main>
+
+    </body>
+</html>

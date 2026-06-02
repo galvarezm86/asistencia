@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}
+Editar persona
+{% endblock %}
+
+{% block nav_section %}
+
+<a
+    href="{{ url_for('personas') }}"
+    class="nav-section-link"
+>
+    Personas
+</a>
+
+{% endblock %}
+
+{% block content %}
+
+<div class="dashboard-wrapper">
+
+
+    <h1>Editar persona</h1>
+    
+    <div class="card personas-form-card">
+    
+        <form method="POST">
+    
+            <input
+                type="hidden"
+                name="csrf_token"
+                value="{{ session.csrf_token }}"
+            >
+    
+            <label for="nombre">
+                Nombre
+            </label>
+    
+            <input
+                type="text"
+                id="nombre"
+                name="nombre"
+                value="{{ persona['nombre'] }}"
+                required
+            >
+    
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Guardar cambios</button>
+                <a href="{{ volver_url }}" class="btn btn-secondary">Volver</a>
+            </div>
+    
+        </form>
+    
+    </div>
+
+</div>
+
+{% endblock %}

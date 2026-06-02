@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block title %}
+Administrar personas
+{% endblock %}
+
+{% block nav_section %}
+
+<a
+    href="{{ url_for('personas') }}"
+    class="nav-section-link"
+>
+    Personas
+</a>
+
+{% endblock %}
+
+{% block content %}
+
+<div class="dashboard-wrapper">
+
+    <h1>Administración de personas</h1>
+    
+    <div class="card personas-form-card">
+    
+        <h2>Agregar persona</h2>
+    
+        <form
+            method="POST"
+            action="{{ url_for('agregar_persona') }}"
+        >
+    
+            <input
+                type="hidden"
+                name="csrf_token"
+                value="{{ session.csrf_token }}"
+            >
+    
+            <label for="nombre">
+                Nombre
+            </label>
+    
+            <input
+                type="text"
+                id="nombre"
+                name="nombre"
+                placeholder="Nombre completo"
+                required
+            >
+    
+            <div class="form-actions">
+
+                <button
+                    type="submit"
+                    class="btn btn-primary"
+                >
+                    Agregar
+                </button>
+
+                <a
+                    href="{{ url_for('admin') }}"
+                    class="btn btn-secondary"
+                >
+                    Volver
+                </a>
+
+            </div>
+    
+        </form>
+    
+    </div>
+    
+    <div class="card personas-card">
+    
+        <h2>Listado de personas</h2>
+    
+        <div class="personas-lista">
+    
+            {% for persona in personas %}
+    
+                <div class="persona-item">
+    
+                    <span class="persona-nombre">
+                        {{ persona["nombre"] }}
+                    </span>
+    
+                    <div class="persona-acciones">
+    
+                        <a href="{{ url_for('editar_persona', id=persona['id'], next=request.path) }}">
+                            Editar
+                        </a>
+    
+                        <form
+                            method="POST"
+                            action="{{ url_for('desactivar_persona', id=persona['id']) }}"
+                        >
+    
+                            <input
+                                type="hidden"
+                                name="csrf_token"
+                                value="{{ session.csrf_token }}"
+                            >
+    
+                            <button
+                                type="submit"
+                                class="link-button danger-link"
+                            >
+                                Desactivar
+                            </button>
+    
+                        </form>
+    
+                    </div>
+    
+                </div>
+    
+            {% endfor %}
+    
+        </div>
+    
+        <div class="personas-footer">
+    
+            <a href="{{ url_for('personas_inactivas') }}">
+                Ver usuarios desactivados
+            </a>
+    
+        </div>
+    
+    </div>
+    
+</div>
+
+{% endblock %}

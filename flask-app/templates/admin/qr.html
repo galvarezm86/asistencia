@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}
+Gestión QR
+{% endblock %}
+
+{% block content %}
+
+{% block nav_section %}
+
+<a
+    href="{{ url_for('qr') }}"
+    class="nav-section-link"
+>
+    Gestión QR
+</a>
+
+{% endblock %}
+
+<div class="dashboard-wrapper">
+
+    <h1>Gestión QR</h1>
+
+    <div class="dashboard-grid">
+
+        <div class="card">
+
+            <div class="form-actions qr-nav-actions">
+
+                <a
+                    href="{{ url_for('formulario', token=token) }}"
+                    class="btn btn-primary"
+                    target="_blank"
+                    rel="noopener"
+                >
+                    Ver formulario
+                </a>
+
+                <a href="{{ url_for('admin') }}" class="btn btn-secondary">
+                        Volver
+                </a>
+
+            </div>
+
+            <h2>QR actual</h2>
+
+            <img
+                src="{{ url_for('qr_imagen') }}"
+                alt="QR"
+                class="qr-image"
+            >
+
+            <div class="form-actions">
+
+                <form
+                    method="POST"
+                    action="{{ url_for('regenerar_token') }}"
+                    onsubmit="return confirm('¿Desea generar un nuevo QR? El QR anterior dejará de funcionar inmediatamente.');"
+                >
+                    <input
+                        type="hidden"
+                        name="csrf_token"
+                        value="{{ session.csrf_token }}"
+                    >
+
+                    <button
+                        class="btn btn-primary"
+                        type="submit"
+                    >
+                        Regenerar QR
+                    </button>
+                </form>
+
+                <form method="POST" action="{{ url_for('qr_pdf') }}">
+                    <input
+                        type="hidden"
+                        name="csrf_token"
+                        value="{{ session.csrf_token }}"
+                    >
+
+                    <button type="submit" class="btn btn-primary">
+                        Descargar PDF
+                    </button>
+                </form>
+
+                
+
+            </div>
+
+        </div>
+
+
+    </div>
+
+</div>
+
+{% endblock %}

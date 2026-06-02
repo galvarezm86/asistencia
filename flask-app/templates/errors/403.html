@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+
+{% block title %}Acceso denegado{% endblock %}
+
+{% block content %}
+
+<h1>Error 403</h1>
+
+<p>No tienes permisos para acceder a esta página.</p>
+
+<a href="{{ url_for('inicio') }}">Volver al inicio</a>
+
+{% endblock %}

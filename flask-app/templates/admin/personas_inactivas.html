@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block title %}
+Personas inactivas
+{% endblock %}
+
+{% block nav_section %}
+
+<a
+href="{{ url_for('personas') }}"
+class="nav-section-link"
+
+>
+
+
+Personas
+
+
+</a>
+
+{% endblock %}
+
+{% block content %}
+
+<div class="dashboard-wrapper">
+
+
+<h1>Personas inactivas</h1>
+
+<div class="card personas-card">
+
+    {% if personas %}
+
+        <div class="personas-lista">
+
+            {% for persona in personas %}
+
+                <div class="persona-item">
+
+                    <span class="persona-nombre">
+                        {{ persona["nombre"] }}
+                    </span>
+
+                    <div class="persona-acciones">
+
+                        <a href="{{ url_for('editar_persona', id=persona['id'], next=request.path) }}">
+                            Editar
+                        </a>
+
+                        <form
+                            method="POST"
+                            action="{{ url_for('reactivar_persona', id=persona['id']) }}"
+                        >
+
+                            <input
+                                type="hidden"
+                                name="csrf_token"
+                                value="{{ session.csrf_token }}"
+                            >
+
+                            <button
+                                type="submit"
+                                class="link-button success-link"
+                            >
+                                Reactivar
+                            </button>
+
+                        </form>
+
+                    </div>
+
+                </div>
+
+            {% endfor %}
+
+        </div>
+
+    {% else %}
+
+        <p>
+            No hay usuarios desactivados.
+        </p>
+
+    {% endif %}
+
+    <div class="form-actions">
+
+        <a
+            href="{{ url_for('personas') }}"
+            class="btn btn-secondary"
+        >
+            Volver
+        </a>
+
+    </div>
+
+</div>
+
+
+</div>
+
+{% endblock %}
