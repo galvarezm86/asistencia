@@ -42,25 +42,28 @@ def agregar_headers_no_cache(response):
 
     return response
     
-ADMIN_USER = os.environ.get("ADMIN_USER")
-ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD")
-app.secret_key = os.environ.get("SESSION_SECRET")
-
-if not ADMIN_USER or not ADMIN_PASSWORD:
-    raise ValueError("Credenciales admin no configuradas")
-    
-if not app.secret_key:
-    raise ValueError("SESSION_SECRET no está configurado")
-
+ADMIN_USER = os.environ["ADMIN_USER"]
+ADMIN_PASSWORD = os.environ["ADMIN_PASSWORD"]
+app.secret_key = os.environ["SESSION_SECRET"]
+DATABASE_URL = os.environ["DATABASE_URL"]
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATABASE_PATH = os.path.join(BASE_DIR, "database.db")
 
-MAX_NOMBRE_LENGTH = 100
-MAX_CORREO_LENGTH = 255
+if DATABASE_URL.startswith("sqlite:///"):
+    db_name = DATABASE_URL.replace("sqlite:///", "")
+    DATABASE_PATH = os.path.join(BASE_DIR, db_name)
+else:
+    raise ValueError("Motor de base de datos no soportado")
 
-# Conexión SQLite
+
 def get_db_connection():
+    if DATABASE_URL.startswith("sqlite:///"):
+        return get_sqlite_connection()
+
+    raise ValueError("Motor no soportado")
+
+
+def get_sqlite_connection():
     conn = sqlite3.connect(DATABASE_PATH)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
@@ -95,6 +98,9 @@ def validar_csrf():
         token_form != token_session
     ):
         abort(403)
+
+MAX_NOMBRE_LENGTH = 100
+MAX_CORREO_LENGTH = 255
 
 def normalizar_nombre(nombre):
     
@@ -1555,7 +1561,6 @@ def confirmacion():
         token=token
     )
 
-    
 @app.errorhandler(403)
 def forbidden(error):
     return render_template("errors/403.html"), 403
@@ -1576,4 +1581,3 @@ def internal_server_error(error):
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=False)
-
