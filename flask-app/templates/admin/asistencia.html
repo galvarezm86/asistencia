@@ -53,10 +53,10 @@ Asistencia
                     Persona
                 </th>
 
-                {% for fecha in fechas %}
+                {% for fecha in fechas_mostrar %}
 
                     <th>
-                        {{ fecha["fecha"][8:10] }}/{{ fecha["fecha"][5:7] }}/{{ fecha["fecha"][2:4] }}
+                        {{ fecha }}
                     </th>
 
                 {% endfor %}

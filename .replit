@@ -13,3 +13,8 @@ packages = ["freetype", "glibcLocales"]
 
 [agent]
 expertMode = true
+
+[userenv]
+
+[userenv.shared]
+CURRENT_DATABASE = "POSTGRESQL"

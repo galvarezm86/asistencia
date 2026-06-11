@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS personas (
 
-    id SERIAL PRIMARY KEY
+    id SERIAL PRIMARY KEY,
 
     nombre TEXT NOT NULL UNIQUE,
 
@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS personas (
 
 CREATE TABLE IF NOT EXISTS asistencias (
 
-    id SERIAL PRIMARY KEY
+    id SERIAL PRIMARY KEY,
 
     persona_id INTEGER NOT NULL,
 

@@ -16,9 +16,39 @@ from openpyxl import Workbook
 from openpyxl.utils import get_column_letter
 from openpyxl.styles import Font, Alignment
 
+import psycopg
+from psycopg.rows import dict_row
+
 
 app = Flask(__name__)
 
+CURRENT_DATABASE = os.environ.get(
+    "CURRENT_DATABASE",
+    "SQLITE"
+).upper()
+
+if CURRENT_DATABASE == "SQLITE":
+
+    DATABASE_URL = os.environ[
+        "DATABASE_URL_SQLITE"
+    ]
+
+elif CURRENT_DATABASE == "POSTGRESQL":
+
+    DATABASE_URL = os.environ[
+        "DATABASE_URL_POSTGRESQL"
+    ]
+
+else:
+
+    raise ValueError(
+        "Motor de base de datos no soportado"
+    )
+
+print(
+    f"Base de datos activa: {CURRENT_DATABASE}"
+)
+    
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(hours=8)
@@ -45,29 +75,59 @@ def agregar_headers_no_cache(response):
 ADMIN_USER = os.environ["ADMIN_USER"]
 ADMIN_PASSWORD = os.environ["ADMIN_PASSWORD"]
 app.secret_key = os.environ["SESSION_SECRET"]
-DATABASE_URL = os.environ["DATABASE_URL"]
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
-if DATABASE_URL.startswith("sqlite:///"):
-    db_name = DATABASE_URL.replace("sqlite:///", "")
-    DATABASE_PATH = os.path.join(BASE_DIR, db_name)
-else:
+DATABASE_IS_SQLITE = DATABASE_URL.startswith("sqlite:///")
+DATABASE_IS_POSTGRESQL = DATABASE_URL.startswith("postgresql://")
+if not DATABASE_IS_SQLITE and not DATABASE_IS_POSTGRESQL:
     raise ValueError("Motor de base de datos no soportado")
 
+DB_PARAM = "?" if DATABASE_IS_SQLITE else "%s"
+
+DB_CURRENT_DATE = (
+    "DATE('now')"
+    if DATABASE_IS_SQLITE
+    else "CURRENT_DATE"
+)
+
+DATABASE_ERRORS = (
+    sqlite3.Error,
+    psycopg.Error
+)
+
+INTEGRITY_ERRORS = (
+    sqlite3.IntegrityError,
+    psycopg.IntegrityError
+)
+
+    
 
 def get_db_connection():
-    if DATABASE_URL.startswith("sqlite:///"):
-        return get_sqlite_connection()
 
+    if DATABASE_IS_SQLITE:
+        return get_sqlite_connection()
+    
+    if DATABASE_IS_POSTGRESQL:
+        return get_postgresql_connection()
+    
     raise ValueError("Motor no soportado")
 
 
 def get_sqlite_connection():
+    db_name = DATABASE_URL.replace("sqlite:///", "")
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    DATABASE_PATH = os.path.join(BASE_DIR, db_name)
     conn = sqlite3.connect(DATABASE_PATH)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
+
+def get_postgresql_connection():
+    conn = psycopg.connect(
+        DATABASE_URL,
+        row_factory=dict_row # type: ignore[arg-type]
+    )
+    return conn
+
 
 def asegurar_csrf_token():
 
@@ -261,10 +321,10 @@ def qr():
             token=config["token_actual"]
         )
 
-    except sqlite3.Error:
+    except DATABASE_ERRORS:
 
         app.logger.exception(
-            "Error SQLite al cargar gestión QR"
+            "Error en la base de datos al cargar gestión QR"
         )
 
         flash(
@@ -319,10 +379,10 @@ def qr_imagen():
             mimetype="image/png"
         )
 
-    except sqlite3.Error:
+    except DATABASE_ERRORS:
 
         app.logger.exception(
-            "Error SQLite al generar QR"
+            "Error en la base de datos al generar QR"
         )
 
         abort(500)
@@ -352,7 +412,7 @@ def asistencia_admin():
     if desde:
 
         where_clauses.append(
-            "date(fecha_hora) >= ?"
+            f"DATE(fecha_hora) >= {DB_PARAM}"
         )
 
         params.append(desde)
@@ -360,7 +420,7 @@ def asistencia_admin():
     if hasta:
 
         where_clauses.append(
-            "date(fecha_hora) <= ?"
+            f"DATE(fecha_hora) <= {DB_PARAM}"
         )
 
         params.append(hasta)
@@ -406,7 +466,7 @@ def asistencia_admin():
     if desde:
 
         personas_where_clauses.append(
-            "date(a.fecha_hora) >= ?"
+            f"DATE(a.fecha_hora) >= {DB_PARAM}"
         )
 
         personas_params.append(desde)
@@ -414,7 +474,7 @@ def asistencia_admin():
     if hasta:
 
         personas_where_clauses.append(
-            "date(a.fecha_hora) <= ?"
+            f"DATE(a.fecha_hora) <= {DB_PARAM}"
         )
 
         personas_params.append(hasta)
@@ -457,7 +517,8 @@ def asistencia_admin():
             datos = []
 
             return render_template("admin/asistencia.html", fechas=fechas, datos=datos)
-            
+
+        
         asistencias_set = {
             (
                 asistencia["persona_id"],
@@ -506,10 +567,32 @@ def asistencia_admin():
                 hasta,
                 "%Y-%m-%d"
             ).strftime("%d/%m/%y")
-            
+
+        fechas_mostrar = []
+
+        for fecha in fechas:
+
+            valor = fecha["fecha"]
+
+            if isinstance(valor, str):
+
+                fechas_mostrar.append(
+                    datetime.strptime(
+                        valor,
+                        "%Y-%m-%d"
+                    ).strftime("%d/%m/%y")
+                )
+
+            else:
+
+                fechas_mostrar.append(
+                    valor.strftime("%d/%m/%y")
+                )
+                
         return render_template(
             "admin/asistencia.html",
             fechas=fechas,
+            fechas_mostrar=fechas_mostrar,
             tabla=tabla,
             desde=desde,
             hasta=hasta,
@@ -540,7 +623,7 @@ def exportar_asistencia_excel():
     if desde:
     
         where_clauses.append(
-            "date(fecha_hora) >= ?"
+            f"date(fecha_hora) >= {DB_PARAM}"
         )
     
         params.append(desde)
@@ -548,7 +631,7 @@ def exportar_asistencia_excel():
     if hasta:
     
         where_clauses.append(
-            "date(fecha_hora) <= ?"
+            f"date(fecha_hora) <= {DB_PARAM}"
         )
     
         params.append(hasta)
@@ -594,7 +677,7 @@ def exportar_asistencia_excel():
     if desde:
     
         personas_where_clauses.append(
-            "date(a.fecha_hora) >= ?"
+            f"date(a.fecha_hora) >= {DB_PARAM}"
         )
     
         personas_params.append(desde)
@@ -602,7 +685,7 @@ def exportar_asistencia_excel():
     if hasta:
     
         personas_where_clauses.append(
-            "date(a.fecha_hora) <= ?"
+            f"date(a.fecha_hora) <= {DB_PARAM}"
         )
     
         personas_params.append(hasta)
@@ -693,11 +776,21 @@ def exportar_asistencia_excel():
 
         for fecha in fechas:
 
-            fecha_formateada = datetime.strptime(
-                fecha["fecha"],
-                "%Y-%m-%d"
-            ).strftime("%d/%m/%y")
-
+            valor = fecha["fecha"]
+    
+            if isinstance(valor, str):
+    
+                fecha_formateada = datetime.strptime(
+                    valor,
+                    "%Y-%m-%d"
+                ).strftime("%d/%m/%y")
+    
+            else:
+    
+                fecha_formateada = valor.strftime(
+                    "%d/%m/%y"
+                )
+    
             encabezados.append(
                 fecha_formateada
             )
@@ -804,9 +897,9 @@ def regenerar_token():
         conn = get_db_connection()
 
         conn.execute(
-            """
+            f"""
             UPDATE configuracion
-            SET token_actual = ?
+            SET token_actual = {DB_PARAM}
             WHERE id = 1
             """,
             (nuevo_token,)
@@ -819,13 +912,13 @@ def regenerar_token():
             "success"
         )
 
-    except sqlite3.Error:
+    except DATABASE_ERRORS:
 
         if conn:
             conn.rollback()
 
         app.logger.exception(
-            "Error SQLite al regenerar token"
+            "Error en la base de datos al regenerar token"
         )
 
         flash(
@@ -977,9 +1070,9 @@ def editar_correo():
             return redirect(url_for("admin"))
 
         conn.execute(
-            """
+            f"""
             UPDATE configuracion
-            SET correo_reportes = ?
+            SET correo_reportes = {DB_PARAM}
             WHERE id = 1
             """,
             (correo,)
@@ -992,13 +1085,13 @@ def editar_correo():
             "success"
         )
 
-    except sqlite3.Error:
+    except DATABASE_ERRORS:
 
         if conn:
             conn.rollback()
 
         app.logger.exception(
-            "Error SQLite al actualizar correo"
+            "Error en la base de datos al actualizar correo"
         )
 
         flash(
@@ -1078,10 +1171,10 @@ def agregar_persona():
         conn = get_db_connection()
 
         existe = conn.execute(
-            """
+            f"""
             SELECT 1
             FROM personas
-            WHERE nombre = ?
+            WHERE nombre = {DB_PARAM}
             """,
             (nombre,)
         ).fetchone()
@@ -1096,9 +1189,9 @@ def agregar_persona():
             return redirect(url_for("personas"))
 
         conn.execute(
-            """
+            f"""
             INSERT INTO personas (nombre)
-            VALUES (?)
+            VALUES ({DB_PARAM})
             """,
             (nombre,)
         )
@@ -1110,13 +1203,13 @@ def agregar_persona():
             "success"
         )
 
-    except sqlite3.Error:
+    except DATABASE_ERRORS:
 
         if conn:
             conn.rollback()
 
         app.logger.exception(
-            "Error SQLite al agregar persona"
+            "Error en la base de datos al agregar persona"
         )
 
         flash(
@@ -1144,10 +1237,10 @@ def desactivar_persona(id):
         conn = get_db_connection()
 
         persona = conn.execute(
-            """
+            f"""
             SELECT id, activo
             FROM personas
-            WHERE id = ?
+            WHERE id = {DB_PARAM}
             """,
             (id,)
         ).fetchone()
@@ -1165,10 +1258,10 @@ def desactivar_persona(id):
             return redirect(url_for("personas"))
 
         conn.execute(
-            """
+            f"""
             UPDATE personas
             SET activo = 0
-            WHERE id = ?
+            WHERE id = {DB_PARAM}
             """,
             (id,)
         )
@@ -1180,13 +1273,13 @@ def desactivar_persona(id):
             "success"
         )
 
-    except sqlite3.Error:
+    except DATABASE_ERRORS:
 
         if conn:
             conn.rollback()
 
         app.logger.exception(
-            "Error SQLite al desactivar persona"
+            "Error en la base de datos al desactivar persona"
         )
 
         flash(
@@ -1214,10 +1307,10 @@ def reactivar_persona(id):
         conn = get_db_connection()
 
         persona = conn.execute(
-            """
+            f"""
             SELECT id, activo
             FROM personas
-            WHERE id = ?
+            WHERE id = {DB_PARAM}
             """,
             (id,)
         ).fetchone()
@@ -1235,10 +1328,10 @@ def reactivar_persona(id):
             return redirect(url_for("personas_inactivas"))
 
         conn.execute(
-            """
+            f"""
             UPDATE personas
             SET activo = 1
-            WHERE id = ?
+            WHERE id = {DB_PARAM}
             """,
             (id,)
         )
@@ -1250,13 +1343,13 @@ def reactivar_persona(id):
             "success"
         )
 
-    except sqlite3.Error:
+    except DATABASE_ERRORS:
 
         if conn:
             conn.rollback()
 
         app.logger.exception(
-            "Error SQLite al reactivar persona"
+            "Error en la base de datos al reactivar persona"
         )
 
         flash(
@@ -1282,10 +1375,10 @@ def editar_persona(id):
         conn = get_db_connection()
 
         persona = conn.execute(
-            """
+            f"""
             SELECT id, nombre, activo
             FROM personas
-            WHERE id = ?
+            WHERE id = {DB_PARAM}
             """,
             (id,)
         ).fetchone()
@@ -1314,11 +1407,11 @@ def editar_persona(id):
                 return redirect(url_for("editar_persona", id=id, next=volver_url))
 
             existe = conn.execute(
-                """
+                f"""
                 SELECT 1
                 FROM personas
-                WHERE nombre = ?
-                AND id != ?
+                WHERE nombre = {DB_PARAM}
+                AND id != {DB_PARAM}
                 """,
                 (nombre, id)
             ).fetchone()
@@ -1328,10 +1421,10 @@ def editar_persona(id):
                 return redirect(url_for("editar_persona", id=id, next=volver_url))
 
             conn.execute(
-                """
+                f"""
                 UPDATE personas
-                SET nombre = ?
-                WHERE id = ?
+                SET nombre = {DB_PARAM}
+                WHERE id = {DB_PARAM}
                 """,
                 (nombre, id)
             )
@@ -1348,12 +1441,12 @@ def editar_persona(id):
             volver_url=volver_url  # enviar al template para el botón "Volver"
         )
 
-    except sqlite3.Error:
+    except DATABASE_ERRORS:
 
         if conn:
             conn.rollback()
 
-        app.logger.exception("Error SQLite al editar persona")
+        app.logger.exception("Error en la base de datos al editar persona")
         flash("Ocurrió un error interno", "error")
         return redirect(url_for("personas"))
 
@@ -1428,10 +1521,10 @@ def formulario(token):
                 )
 
             persona = conn.execute(
-                """
+                f"""
                 SELECT id, nombre
                 FROM personas
-                WHERE id = ?
+                WHERE id = {DB_PARAM}
                 AND activo = 1
                 """,
                 (persona_id,)
@@ -1439,14 +1532,16 @@ def formulario(token):
 
             if persona is None:
                 abort(404)
-
-            existe = conn.execute(
-                """
+            
+            existe_sql = f"""
                 SELECT 1
                 FROM asistencias
-                WHERE persona_id = ?
-                AND date(fecha_hora) = date('now')
-                """,
+                WHERE persona_id = {DB_PARAM}
+                AND DATE(fecha_hora) = {DB_CURRENT_DATE}
+            """
+            
+            existe = conn.execute(
+                existe_sql,
                 (persona_id,)
             ).fetchone()
 
@@ -1465,9 +1560,9 @@ def formulario(token):
                 )
 
             conn.execute(
-                """
+                f"""
                 INSERT INTO asistencias (persona_id)
-                VALUES (?)
+                VALUES ({DB_PARAM})
                 """,
                 (persona_id,)
             )
@@ -1496,7 +1591,7 @@ def formulario(token):
             personas=personas
         )
         
-    except sqlite3.IntegrityError:
+    except INTEGRITY_ERRORS:
 
         if conn:
             conn.rollback()
@@ -1513,13 +1608,13 @@ def formulario(token):
             )
         )
     
-    except sqlite3.Error:
+    except DATABASE_ERRORS:
 
         if conn:
             conn.rollback()
 
         app.logger.exception(
-            "Error SQLite al registrar asistencia"
+            "Error en la base de datos al registrar asistencia"
         )
 
         flash(
