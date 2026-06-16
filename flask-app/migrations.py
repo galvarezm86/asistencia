@@ -137,13 +137,13 @@ def run_sql(conn, file_name):
 if DATABASE_IS_SQLITE:
 
     MIGRATION_FILE = (
-        "migracion_inicial.sql"
+        "001_configuracion_automatizaciones.sql"
     )
 
 elif DATABASE_IS_POSTGRESQL:
 
     MIGRATION_FILE = (
-        "migracion_inicial_postgresql.sql"
+        "001_configuracion_automatizaciones_postgresql.sql"
     )
 
 else:

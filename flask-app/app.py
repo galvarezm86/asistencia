@@ -1024,6 +1024,52 @@ def qr_pdf():
     buffer.seek(0)
 
     return send_file(buffer, mimetype="application/pdf", as_attachment=True, download_name="qr_asistencia.pdf")
+
+@app.route("/admin/configuracion")
+@login_required
+def configuracion():
+
+    conn = None
+
+    try:
+
+        conn = get_db_connection()
+
+        config = conn.execute(
+            """
+            SELECT *
+            FROM configuracion
+            WHERE id = 1
+            """
+        ).fetchone()
+
+        if not config:
+            abort(500)
+
+        return render_template(
+            "admin/configuracion.html",
+            config=config
+        )
+
+    except DATABASE_ERRORS:
+
+        app.logger.exception(
+            "Error al cargar configuración"
+        )
+
+        flash(
+            "Ocurrió un error interno",
+            "error"
+        )
+
+        return redirect(
+            url_for("admin")
+        )
+
+    finally:
+
+        if conn:
+            conn.close()
     
 @app.route("/admin/configuracion/correo", methods=["POST"])
 @login_required
@@ -1108,7 +1154,7 @@ def editar_correo():
         if conn:
             conn.close()
 
-    return redirect(url_for("admin"))
+    return redirect(url_for("configuracion"))
     
 @app.route("/admin/personas")
 @login_required

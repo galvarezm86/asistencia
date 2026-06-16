@@ -33,8 +33,16 @@ CREATE TABLE IF NOT EXISTS configuracion (
     id INTEGER PRIMARY KEY CHECK (id = 1),
 
     correo_reportes TEXT NOT NULL,
-    
-    token_actual TEXT NOT NULL
+
+    token_actual TEXT NOT NULL,
+
+    qr_auto_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+    qr_auto_day INTEGER,
+    qr_auto_time VARCHAR(5),
+
+    report_auto_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+    report_auto_day INTEGER,
+    report_auto_time VARCHAR(5)
 
 );
 

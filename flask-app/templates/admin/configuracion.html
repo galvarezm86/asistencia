@@ -1,54 +1,69 @@
 {% extends "base.html" %}
 
 {% block title %}
-Panel de administración
+Configuración
 {% endblock %}
 
 {% block content %}
 
-<form
-  method="POST"
-  action="{{ url_for('editar_correo') }}"
->
-
-  <input
-      type="hidden"
-      name="csrf_token"
-      value="{{ session.csrf_token }}"
-  >
-
-  <label for="correo">
-      Modificar correo
-  </label>
-
-  <input
-      type="email"
-      id="correo"
-      name="correo"
-      value="{{ correo }}"
-      required
-  >
-
-  <button
-      type="submit"
-      class="btn btn-primary"
-  >
-      Guardar correo
-  </button>
-
-</form>
+<h1>Configuración</h1>
 
 <section class="card">
 
+    <h2>Correo de reportes</h2>
 
-<h2>Información actual</h2>
+    <form
+        method="POST"
+        action="{{ url_for('editar_correo') }}"
+    >
 
-<p>
-    <strong>Correo actual:</strong>
-    {{ correo }}
-</p>
+        <input
+            type="hidden"
+            name="csrf_token"
+            value="{{ session.csrf_token }}"
+        >
 
+        <label for="correo">
+            Correo destinatario
+        </label>
 
+        <input
+            type="email"
+            id="correo"
+            name="correo"
+            value="{{ config['correo_reportes'] }}"
+            required
+        >
 
+        <button
+            type="submit"
+            class="btn btn-primary"
+        >
+            Guardar correo
+        </button>
+
+    </form>
 
 </section>
+
+<section class="card">
+
+    <h2>Regeneración automática de QR</h2>
+
+    <p>
+        Próximamente.
+    </p>
+
+</section>
+
+<section class="card">
+
+    <h2>Reporte automático de asistencia</h2>
+
+    <p>
+        Próximamente.
+    </p>
+
+</section>
+
+{% endblock %}
