@@ -27,6 +27,10 @@ CURRENT_DATABASE = os.environ.get(
     "SQLITE"
 ).upper()
 
+print(
+    f"CURRENT_DATABASE = [{CURRENT_DATABASE}]"
+)
+
 if CURRENT_DATABASE == "SQLITE":
 
     DATABASE_URL = os.environ[

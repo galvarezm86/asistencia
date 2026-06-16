@@ -9,7 +9,7 @@ localPort = 5000
 externalPort = 80
 
 [nix]
-packages = ["freetype", "glibcLocales"]
+packages = ["freetype", "glibcLocales", "postgresql"]
 
 [agent]
 expertMode = true
@@ -17,4 +17,4 @@ expertMode = true
 [userenv]
 
 [userenv.shared]
-CURRENT_DATABASE = "POSTGRESQL"
+CURRENT_DATABASE = "SQLITE"
