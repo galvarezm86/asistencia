@@ -1070,7 +1070,227 @@ def configuracion():
 
         if conn:
             conn.close()
+
+@app.route("/admin/configuracion/guardar", methods=["POST"])
+@login_required
+def guardar_configuracion():
+
+    validar_csrf()
+
+    correo = request.form.get(
+        "correo",
+        ""
+    ).strip()
+
+    if not correo:
+        flash("Correo obligatorio", "error")
+        return redirect(url_for("configuracion"))
+
+    if len(correo) > MAX_CORREO_LENGTH:
+        flash("Correo demasiado largo", "error")
+        return redirect(url_for("configuracion"))
+
+    patron = r"^[^@]+@[^@]+\.[^@]+$"
+
+    if not re.match(patron, correo):
+        flash("Correo inválido", "error")
+        return redirect(url_for("configuracion"))
+
+
+    qr_auto_enabled = (
+        "qr_auto_enabled"
+        in request.form
+    )
+
+    qr_auto_day = request.form.get(
+        "qr_auto_day"
+    )
+
+    qr_auto_time = request.form.get(
+        "qr_auto_time"
+    )
+
+    report_auto_enabled = (
+        "report_auto_enabled"
+        in request.form
+    )
+
+    report_auto_day = request.form.get(
+        "report_auto_day"
+    )
+
+    report_auto_time = request.form.get(
+        "report_auto_time"
+    )
+
+    dias_validos = {
+        "0",
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6"
+    }
+
+    if qr_auto_enabled:
+
+        if qr_auto_day not in dias_validos:
+
+            flash(
+                "Día de QR automático inválido",
+                "error"
+            )
+
+            return redirect(
+                url_for("configuracion")
+            )
+
+        if not qr_auto_time:
+
+            flash(
+                "Debe indicar una hora para la regeneración automática",
+                "error"
+            )
+
+            return redirect(
+                url_for("configuracion")
+            )
+
+        try:
+
+            datetime.strptime(
+                qr_auto_time,
+                "%H:%M"
+            )
+
+        except ValueError:
+
+            flash(
+                "Hora de regeneración QR inválida",
+                "error"
+            )
+
+            return redirect(
+                url_for("configuracion")
+            )
+
+    else:
+
+        qr_auto_day = None
+        qr_auto_time = None
+        
+    if report_auto_enabled:
+
+        if report_auto_day not in dias_validos:
+
+           flash(
+               "Día de reporte automático inválido",
+               "error"
+           )
+
+           return redirect(
+               url_for("configuracion")
+           )
+
+        if not report_auto_time:
+
+           flash(
+               "Debe indicar una hora para el reporte automático",
+               "error"
+           )
+
+           return redirect(
+               url_for("configuracion")
+           )
+
+        try:
+
+           datetime.strptime(
+               report_auto_time,
+               "%H:%M"
+           )
+
+        except ValueError:
+
+           flash(
+               "Hora de reporte automático inválida",
+               "error"
+           )
+
+           return redirect(
+               url_for("configuracion")
+           )
+
+    else:
+
+        report_auto_day = None
+        report_auto_time = None
+
     
+    conn = None
+
+    try:
+
+        conn = get_db_connection()
+
+        conn.execute(
+            f"""
+            UPDATE configuracion
+            SET
+                correo_reportes = {DB_PARAM},
+                qr_auto_enabled = {DB_PARAM},
+                qr_auto_day = {DB_PARAM},
+                qr_auto_time = {DB_PARAM},
+                report_auto_enabled = {DB_PARAM},
+                report_auto_day = {DB_PARAM},
+                report_auto_time = {DB_PARAM}
+            WHERE id = 1
+            """,
+            (
+                correo,
+                qr_auto_enabled,
+                qr_auto_day or None,
+                qr_auto_time or None,
+                report_auto_enabled,
+                report_auto_day or None,
+                report_auto_time or None
+            )
+        )
+
+        conn.commit()
+
+        flash(
+            "Configuración actualizada correctamente",
+            "success"
+        )
+
+    except DATABASE_ERRORS:
+
+        if conn:
+            conn.rollback()
+
+        app.logger.exception(
+            "Error al guardar configuración"
+        )
+
+        flash(
+            "Ocurrió un error interno",
+            "error"
+        )
+
+    finally:
+
+        if conn:
+            conn.close()
+
+    return redirect(
+        url_for(
+            "configuracion"
+        )
+    )
+
+
 @app.route("/admin/configuracion/correo", methods=["POST"])
 @login_required
 def editar_correo():

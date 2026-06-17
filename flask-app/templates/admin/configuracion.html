@@ -4,17 +4,26 @@
 Configuración
 {% endblock %}
 
+{% block nav_section %}
+
+<a
+    href="{{ url_for('configuracion') }}"
+    class="nav-section-link"
+>
+    Configuración
+</a>
+
+{% endblock %}
+
 {% block content %}
 
-<h1>Configuración</h1>
+<div class="container">
 
-<section class="card">
-
-    <h2>Correo de reportes</h2>
+    <h1>Configuración</h1>
 
     <form
         method="POST"
-        action="{{ url_for('editar_correo') }}"
+        action="{{ url_for('guardar_configuracion') }}"
     >
 
         <input
@@ -23,47 +32,385 @@ Configuración
             value="{{ session.csrf_token }}"
         >
 
-        <label for="correo">
-            Correo destinatario
-        </label>
+        <div class="config-actions">
 
-        <input
-            type="email"
-            id="correo"
-            name="correo"
-            value="{{ config['correo_reportes'] }}"
-            required
-        >
+            <button
+                type="submit"
+                class="btn btn-primary"
+            >
+                Guardar configuración
+            </button>
 
-        <button
-            type="submit"
-            class="btn btn-primary"
-        >
-            Guardar correo
-        </button>
+            <a
+                href="{{ url_for('admin') }}"
+                class="btn btn-secondary"
+            >
+                Volver
+            </a>
+
+        </div>
+
+        <div class="config-grid">
+
+            <section class="card">
+
+                <div class="correo-row">
+
+                    <h2>Correo de envío de QR y reportes</h2>
+
+                    <input
+                        type="email"
+                        id="correo"
+                        name="correo"
+                        value="{{ config['correo_reportes'] }}"
+                        data-original="{{ config['correo_reportes'] }}"
+                        readonly
+                        required
+                    >
+
+                    <div class="correo-actions">
+
+                        <button
+                            type="button"
+                            id="btn-editar-correo"
+                            class="btn btn-secondary"
+                        >
+                            Editar
+                        </button>
+
+                    </div>
+
+                </div>
+
+            </section>
+
+            <section class="card">
+
+                <div class="card-content">
+
+                    <h2>Regeneración y envío de QR automático</h2>
+
+                    <label class="checkbox-row">
+
+                        <input
+                            type="checkbox"
+                            id="qr_auto_enabled"
+                            name="qr_auto_enabled"
+                            {% if config['qr_auto_enabled'] %}
+                            checked
+                            {% endif %}
+                        >
+
+                        Activar regeneración automática
+
+                    </label>
+
+                    <label for="qr_auto_day">
+                        Día de ejecución
+                    </label>
+
+                    <select
+                        id="qr_auto_day"
+                        name="qr_auto_day"
+                    >
+
+                        <option value="">
+                            Seleccionar
+                        </option>
+
+                        <option
+                            value="0"
+                            {% if config['qr_auto_day'] == 0 %}
+                            selected
+                            {% endif %}
+                        >
+                            Lunes
+                        </option>
+
+                        <option
+                            value="1"
+                            {% if config['qr_auto_day'] == 1 %}
+                            selected
+                            {% endif %}
+                        >
+                            Martes
+                        </option>
+
+                        <option
+                            value="2"
+                            {% if config['qr_auto_day'] == 2 %}
+                            selected
+                            {% endif %}
+                        >
+                            Miércoles
+                        </option>
+
+                        <option
+                            value="3"
+                            {% if config['qr_auto_day'] == 3 %}
+                            selected
+                            {% endif %}
+                        >
+                            Jueves
+                        </option>
+
+                        <option
+                            value="4"
+                            {% if config['qr_auto_day'] == 4 %}
+                            selected
+                            {% endif %}
+                        >
+                            Viernes
+                        </option>
+
+                        <option
+                            value="5"
+                            {% if config['qr_auto_day'] == 5 %}
+                            selected
+                            {% endif %}
+                        >
+                            Sábado
+                        </option>
+
+                        <option
+                            value="6"
+                            {% if config['qr_auto_day'] == 6 %}
+                            selected
+                            {% endif %}
+                        >
+                            Domingo
+                        </option>
+
+                    </select>
+
+                    <label for="qr_auto_time">
+                        Hora de ejecución
+                    </label>
+
+                    <input
+                        type="time"
+                        id="qr_auto_time"
+                        name="qr_auto_time"
+                        value="{{ config['qr_auto_time'] or '' }}"
+                    >
+
+                </div>
+
+            </section>
+
+            <section class="card">
+
+                <div class="card-content">
+
+                    <h2>Reporte automático de última asistencia</h2>
+
+                    <label class="checkbox-row">
+
+                        <input
+                            type="checkbox"
+                            id="report_auto_enabled"
+                            name="report_auto_enabled"
+                            {% if config['report_auto_enabled'] %}
+                            checked
+                            {% endif %}
+                        >
+
+                        Activar envío automático
+
+                    </label>
+
+                    <label for="report_auto_day">
+                        Día de envío
+                    </label>
+
+                    <select
+                        id="report_auto_day"
+                        name="report_auto_day"
+                    >
+
+                        <option value="">
+                            Seleccionar
+                        </option>
+
+                        <option
+                            value="0"
+                            {% if config['report_auto_day'] == 0 %}
+                            selected
+                            {% endif %}
+                        >
+                            Lunes
+                        </option>
+
+                        <option
+                            value="1"
+                            {% if config['report_auto_day'] == 1 %}
+                            selected
+                            {% endif %}
+                        >
+                            Martes
+                        </option>
+
+                        <option
+                            value="2"
+                            {% if config['report_auto_day'] == 2 %}
+                            selected
+                            {% endif %}
+                        >
+                            Miércoles
+                        </option>
+
+                        <option
+                            value="3"
+                            {% if config['report_auto_day'] == 3 %}
+                            selected
+                            {% endif %}
+                        >
+                            Jueves
+                        </option>
+
+                        <option
+                            value="4"
+                            {% if config['report_auto_day'] == 4 %}
+                            selected
+                            {% endif %}
+                        >
+                            Viernes
+                        </option>
+
+                        <option
+                            value="5"
+                            {% if config['report_auto_day'] == 5 %}
+                            selected
+                            {% endif %}
+                        >
+                            Sábado
+                        </option>
+
+                        <option
+                            value="6"
+                            {% if config['report_auto_day'] == 6 %}
+                            selected
+                            {% endif %}
+                        >
+                            Domingo
+                        </option>
+
+                    </select>
+
+                    <label for="report_auto_time">
+                        Hora de envío
+                    </label>
+
+                    <input
+                        type="time"
+                        id="report_auto_time"
+                        name="report_auto_time"
+                        value="{{ config['report_auto_time'] or '' }}"
+                    >
+
+                </div>
+
+            </section>
+
+        </div>
 
     </form>
 
-</section>
+</div>
 
-<section class="card">
+<script>
 
-    <h2>Regeneración automática de QR</h2>
+function toggleFields(
+    checkboxId,
+    fieldIds
+) {
 
-    <p>
-        Próximamente.
-    </p>
+    const checkbox =
+        document.getElementById(
+            checkboxId
+        );
 
-</section>
+    function update() {
 
-<section class="card">
+        fieldIds.forEach(id => {
 
-    <h2>Reporte automático de asistencia</h2>
+            document.getElementById(id)
+                .disabled = !checkbox.checked;
 
-    <p>
-        Próximamente.
-    </p>
+        });
 
-</section>
+    }
+
+    checkbox.addEventListener(
+        "change",
+        update
+    );
+
+    update();
+
+}
+
+toggleFields(
+    "qr_auto_enabled",
+    [
+        "qr_auto_day",
+        "qr_auto_time"
+    ]
+);
+
+toggleFields(
+    "report_auto_enabled",
+    [
+        "report_auto_day",
+        "report_auto_time"
+    ]
+);
+
+</script>
+
+<script>
+
+const correoInput =
+    document.getElementById(
+        "correo"
+    );
+
+const botonCorreo =
+    document.getElementById(
+        "btn-editar-correo"
+    );
+
+const correoOriginal =
+    correoInput.dataset.original;
+
+botonCorreo.addEventListener(
+    "click",
+    () => {
+
+        if (correoInput.readOnly) {
+
+            correoInput.readOnly = false;
+
+            botonCorreo.textContent =
+                "Cancelar";
+
+            correoInput.focus();
+
+        } else {
+
+            correoInput.value =
+                correoOriginal;
+
+            correoInput.readOnly = true;
+
+            botonCorreo.textContent =
+                "Editar";
+
+        }
+
+    }
+);
+
+</script>
 
 {% endblock %}

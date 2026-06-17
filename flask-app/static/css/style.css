@@ -512,3 +512,72 @@ table {
     font-size: 0.95rem;
     font-weight: 500;
 }
+
+.config-grid {
+    display: grid;
+    grid-template-columns:
+        repeat(
+            auto-fit,
+            minmax(320px, 1fr)
+        );
+    gap: 1rem;
+}
+
+@media (max-width: 768px) {
+
+    .config-grid {
+
+        grid-template-columns: 1fr;
+
+    }
+
+}
+
+.config-grid select,
+.config-grid input[type="time"] {
+
+    max-width: 220px;
+
+}
+
+.checkbox-row {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0.5rem;
+}
+
+.checkbox-row input[type="checkbox"] {
+
+    margin: 0;
+    width: auto;
+}
+
+.card-content {
+
+    display: flex;
+    flex-direction: column;
+
+}
+
+.config-grid {
+    margin-bottom: 1.5rem;
+}
+
+.config-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+#correo[readonly] {
+    background-color: #f1f1f1;
+    cursor: not-allowed;
+}
+
+.correo-actions {
+    margin-top: 1rem;
+    display: flex;
+    justify-content: flex-end;
+}
