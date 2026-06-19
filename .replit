@@ -17,4 +17,4 @@ expertMode = true
 [userenv]
 
 [userenv.shared]
-CURRENT_DATABASE = "SQLITE"
+CURRENT_DATABASE = "POSTGRESQL"

@@ -42,6 +42,21 @@ Gestión QR
 
             </div>
 
+            {% if qr_updated_at %}
+            
+            <p class="info-message">
+                Código QR regenerado el
+                {{ qr_updated_at.strftime('%d/%m/%Y %H:%M') }}
+            </p>
+
+            {% else %}
+
+            <p class="info-message">
+                Fecha de regeneración no disponible
+            </p>
+
+            {% endif %}
+            
             <h2>QR actual</h2>
 
             <img
@@ -50,6 +65,12 @@ Gestión QR
                 class="qr-image"
             >
 
+            {% if qr_vencido %}
+            <p class="warning-message">
+                El QR no ha sido regenerado esta semana
+            </p>
+            {% endif %}
+            
             <div class="form-actions">
 
                 <form

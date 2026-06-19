@@ -512,3 +512,17 @@ table {
     font-size: 0.95rem;
     font-weight: 500;
 }
+
+.info-message {
+    text-align: center;
+    color: #0d6efd;
+    margin: 1rem 0;
+}
+
+.warning-message {
+    text-align: center;
+    color: #dc3545;
+    font-weight: 600;
+    margin: 1rem 0;
+}
+

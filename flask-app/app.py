@@ -7,6 +7,7 @@ import re
 import logging
 import io
 import qrcode
+from zoneinfo import ZoneInfo
 from functools import wraps
 from datetime import timedelta, datetime
 from reportlab.lib.pagesizes import letter
@@ -24,7 +25,7 @@ app = Flask(__name__)
 
 CURRENT_DATABASE = os.environ.get(
     "CURRENT_DATABASE",
-    "SQLITE"
+    "POSTGRESQL"
 ).upper()
 
 print(
@@ -310,7 +311,9 @@ def qr():
 
         config = conn.execute(
             """
-            SELECT token_actual
+            SELECT
+                token_actual,
+                qr_updated_at
             FROM configuracion
             WHERE id = 1
             """
@@ -320,9 +323,34 @@ def qr():
 
             abort(500)
 
+        fecha_qr = config["qr_updated_at"]
+
+        if isinstance(fecha_qr, str):
+            fecha_qr = datetime.fromisoformat(fecha_qr)
+
+        fecha_qr = fecha_qr.replace(
+            tzinfo=ZoneInfo("UTC")
+        ).astimezone(
+            ZoneInfo("America/Santiago")
+        )
+        
+        qr_vencido = False
+
+        if config["qr_updated_at"]:
+
+            if isinstance(fecha_qr, str):
+                fecha_qr = datetime.fromisoformat(fecha_qr)
+
+            qr_vencido = (
+                fecha_qr.isocalendar().week
+                != datetime.now().isocalendar().week
+            )
+
         return render_template(
             "admin/qr.html",
-            token=config["token_actual"]
+            token=config["token_actual"],
+            qr_updated_at=fecha_qr,
+            qr_vencido=qr_vencido
         )
 
     except DATABASE_ERRORS:
@@ -903,7 +931,8 @@ def regenerar_token():
         conn.execute(
             f"""
             UPDATE configuracion
-            SET token_actual = {DB_PARAM}
+            SET token_actual = {DB_PARAM},
+                qr_updated_at = CURRENT_TIMESTAMP
             WHERE id = 1
             """,
             (nuevo_token,)

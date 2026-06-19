@@ -34,7 +34,9 @@ CREATE TABLE IF NOT EXISTS configuracion (
 
     correo_reportes TEXT NOT NULL,
     
-    token_actual TEXT NOT NULL
+    token_actual TEXT NOT NULL,
+
+    qr_updated_at TIMESTAMP
 
 );
 

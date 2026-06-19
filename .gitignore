@@ -20,5 +20,6 @@ __pycache__/
 Thumbs.db
 
 # Temp
+test.py
 temp.py
 temp.sql

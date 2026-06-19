@@ -6,7 +6,7 @@ from psycopg.rows import dict_row
 
 CURRENT_DATABASE = os.environ.get(
     "CURRENT_DATABASE",
-    "SQLITE"
+    "POSTGRESQL"
 ).upper()
 
 if CURRENT_DATABASE == "SQLITE":
@@ -137,13 +137,13 @@ def run_sql(conn, file_name):
 if DATABASE_IS_SQLITE:
 
     MIGRATION_FILE = (
-        "migracion_inicial.sql"
+        "001_qr_updated_at.sql"
     )
 
 elif DATABASE_IS_POSTGRESQL:
 
     MIGRATION_FILE = (
-        "migracion_inicial_postgresql.sql"
+        "001_qr_updated_at_postgresql.sql"
     )
 
 else:
