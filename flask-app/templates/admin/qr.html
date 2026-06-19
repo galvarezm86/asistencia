@@ -45,8 +45,7 @@ Gestión QR
             {% if qr_updated_at %}
             
             <p class="info-message">
-                Código QR regenerado el
-                {{ qr_updated_at.strftime('%d/%m/%Y %H:%M') }}
+                Código QR regenerado el {{ qr_updated_at }}
             </p>
 
             {% else %}

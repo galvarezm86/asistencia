@@ -325,27 +325,31 @@ def qr():
 
         fecha_qr = config["qr_updated_at"]
 
-        if isinstance(fecha_qr, str):
-            fecha_qr = datetime.fromisoformat(fecha_qr)
-
-        fecha_qr = fecha_qr.replace(
-            tzinfo=ZoneInfo("UTC")
-        ).astimezone(
-            ZoneInfo("America/Santiago")
-        )
-        
         qr_vencido = False
+        fecha_qr_formateada = None
 
-        if config["qr_updated_at"]:
+        if fecha_qr:
 
             if isinstance(fecha_qr, str):
                 fecha_qr = datetime.fromisoformat(fecha_qr)
+
+            fecha_qr = fecha_qr.replace(
+                tzinfo=ZoneInfo("UTC")
+            ).astimezone(
+                ZoneInfo("America/Santiago")
+            )
+
+            fecha_qr_formateada = fecha_qr.strftime(
+                "%d/%m/%Y a las %H:%M horas"
+            )
 
             qr_vencido = (
                 fecha_qr.isocalendar().week
                 != datetime.now().isocalendar().week
             )
 
+        fecha_qr=fecha_qr_formateada
+            
         return render_template(
             "admin/qr.html",
             token=config["token_actual"],
