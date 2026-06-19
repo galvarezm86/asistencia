@@ -5,7 +5,7 @@ from psycopg.rows import dict_row
 
 CURRENT_DATABASE = os.environ.get(
     "CURRENT_DATABASE",
-    "SQLITE"
+    "POSTGRESQL"
 ).upper()
 
 if CURRENT_DATABASE == "SQLITE":

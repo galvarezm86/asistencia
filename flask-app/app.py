@@ -24,7 +24,7 @@ app = Flask(__name__)
 
 CURRENT_DATABASE = os.environ.get(
     "CURRENT_DATABASE",
-    "SQLITE"
+    "POSTGRESQL"
 ).upper()
 
 print(
