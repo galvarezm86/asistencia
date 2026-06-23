@@ -1,118 +1,31 @@
 import os
-import sqlite3
-import psycopg
-from psycopg.rows import dict_row
-
-CURRENT_DATABASE = os.environ.get(
-    "CURRENT_DATABASE",
-    "POSTGRESQL"
-).upper()
-
-if CURRENT_DATABASE == "SQLITE":
-
-    DATABASE_URL = os.environ[
-        "DATABASE_URL_SQLITE"
-    ]
-
-elif CURRENT_DATABASE == "POSTGRESQL":
-
-    DATABASE_URL = os.environ[
-        "DATABASE_URL_POSTGRESQL"
-    ]
-
-else:
-
-    raise ValueError(
-        "Motor de base de datos no soportado"
-    )
-
-print(
-    f"Base de datos activa: {CURRENT_DATABASE}"
-)
-
-DATABASE_IS_SQLITE = DATABASE_URL.startswith("sqlite:///")
-DATABASE_IS_POSTGRESQL = DATABASE_URL.startswith("postgresql://")
-if not DATABASE_IS_SQLITE and not DATABASE_IS_POSTGRESQL:
-    raise ValueError("Motor de base de datos no soportado")
+from utils.db import get_db_connection
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_DIR = os.path.join(
     BASE_DIR,
     "db"
 )
-    
-def get_db_connection():
 
-    if DATABASE_IS_SQLITE:
-        return get_sqlite_connection()
+DEPLOY_ENV = os.environ.get("DEPLOY_ENV", "DEVELOPMENT").upper()
 
-    if DATABASE_IS_POSTGRESQL:
-        return get_postgresql_connection()
-
-    raise ValueError("Motor no soportado")
-
-
-def get_sqlite_connection():
-    db_name = DATABASE_URL.replace("sqlite:///", "")
-    DATABASE_PATH = os.path.join(BASE_DIR, db_name)
-    conn = sqlite3.connect(DATABASE_PATH)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = ON")
-    return conn
-
-def get_postgresql_connection():
-    conn = psycopg.connect(
-        DATABASE_URL,
-        row_factory=dict_row # type: ignore[arg-type]
-    )
-    return conn
+print(
+    f"Base de datos activa: {DEPLOY_ENV}"
+)
 
 def run_sql(conn, file_name):
-
-    path = os.path.join(
-        DB_DIR,
-        file_name
-    )
-
-    with open(
-        path,
-        encoding="utf-8"
-    ) as f:
-
+    
+    path = os.path.join(DB_DIR, file_name)
+    
+    with open(path, encoding="utf-8") as f:
         sql = f.read()
+    
+    with conn.cursor() as cur:
+        cur.execute(sql, prepare=True)
 
-    if DATABASE_IS_SQLITE:
-
-        conn.executescript(sql)
-
-    elif DATABASE_IS_POSTGRESQL:
-
-        conn.execute(sql)
-
-    else:
-
-        raise ValueError(
-            "Motor no soportado"
-        )
-
-if DATABASE_IS_SQLITE:
-
-    SCHEMA_FILE = "schema.sql"
-    SEED_FILE = "seed.sql"
-    MIGRATION_FILE = "migracion_inicial.sql"
-
-elif DATABASE_IS_POSTGRESQL:
-
-    SCHEMA_FILE = "schema_postgresql.sql"
-    SEED_FILE = "seed_postgresql.sql"
-    MIGRATION_FILE = "migracion_inicial_postgresql.sql"
-
-else:
-
-    raise ValueError(
-        "Motor no soportado"
-    )
-
+SCHEMA_FILE = "schema_postgresql.sql"
+SEED_FILE = "seed_postgresql.sql"
+MIGRATION_FILE = "migracion_inicial_postgresql.sql"
 
 if __name__ == "__main__":
 
@@ -122,6 +35,7 @@ if __name__ == "__main__":
 
         run_sql(conn, SCHEMA_FILE)
         run_sql(conn, SEED_FILE)
+        run_sql(conn, MIGRATION_FILE)
 
         conn.commit()
 
@@ -129,6 +43,4 @@ if __name__ == "__main__":
 
         conn.close()
 
-    print(
-        f"Base de datos inicializada ({CURRENT_DATABASE})"
-    )
+    
