@@ -1,12 +1,12 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash, abort, send_file
 import os
-import sqlite3
 import secrets
 import unicodedata
 import re
 import logging
 import io
 import qrcode
+import psycopg
 from zoneinfo import ZoneInfo
 from functools import wraps
 from datetime import timedelta, datetime
@@ -16,48 +16,34 @@ from reportlab.lib.utils import ImageReader
 from openpyxl import Workbook
 from openpyxl.utils import get_column_letter
 from openpyxl.styles import Font, Alignment
+from utils.db import get_db_connection
 
-import psycopg
-from psycopg.rows import dict_row
 
 
 app = Flask(__name__)
 
-CURRENT_DATABASE = os.environ.get(
-    "CURRENT_DATABASE",
-    "POSTGRESQL"
-).upper()
+ADMIN_USER = os.environ["ADMIN_USER"]
+ADMIN_PASSWORD = os.environ["ADMIN_PASSWORD"]
+app.secret_key = os.environ["SESSION_SECRET"]
+DEPLOY_ENV = os.environ.get("DEPLOY_ENV", "DEVELOPMENT").upper()
 
-print(
-    f"CURRENT_DATABASE = [{CURRENT_DATABASE}]"
+DATABASE_ERRORS = (
+    psycopg.Error
 )
 
-if CURRENT_DATABASE == "SQLITE":
-
-    DATABASE_URL = os.environ[
-        "DATABASE_URL_SQLITE"
-    ]
-
-elif CURRENT_DATABASE == "POSTGRESQL":
-
-    DATABASE_URL = os.environ[
-        "DATABASE_URL_POSTGRESQL"
-    ]
-
-else:
-
-    raise ValueError(
-        "Motor de base de datos no soportado"
-    )
-
-print(
-    f"Base de datos activa: {CURRENT_DATABASE}"
+INTEGRITY_ERRORS = (
+    psycopg.IntegrityError
 )
-    
+
+MAX_NOMBRE_LENGTH = 100
+MAX_CORREO_LENGTH = 255
+
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(hours=8)
-# app.config["SESSION_COOKIE_SECURE"] = True
+app.config["SESSION_COOKIE_SECURE"] = (
+    DEPLOY_ENV == "PRODUCTION"
+)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -76,68 +62,64 @@ def agregar_headers_no_cache(response):
     response.headers["Expires"] = "0"
 
     return response
-    
-ADMIN_USER = os.environ["ADMIN_USER"]
-ADMIN_PASSWORD = os.environ["ADMIN_PASSWORD"]
-app.secret_key = os.environ["SESSION_SECRET"]
-
-DATABASE_IS_SQLITE = DATABASE_URL.startswith("sqlite:///")
-DATABASE_IS_POSTGRESQL = DATABASE_URL.startswith("postgresql://")
-if not DATABASE_IS_SQLITE and not DATABASE_IS_POSTGRESQL:
-    raise ValueError("Motor de base de datos no soportado")
-
-DB_PARAM = "?" if DATABASE_IS_SQLITE else "%s"
-
-DB_CURRENT_DATE = (
-    "DATE('now')"
-    if DATABASE_IS_SQLITE
-    else "CURRENT_DATE"
-)
-
-DATABASE_ERRORS = (
-    sqlite3.Error,
-    psycopg.Error
-)
-
-INTEGRITY_ERRORS = (
-    sqlite3.IntegrityError,
-    psycopg.IntegrityError
-)
-
-    
-
-def get_db_connection():
-
-    if DATABASE_IS_SQLITE:
-        return get_sqlite_connection()
-    
-    if DATABASE_IS_POSTGRESQL:
-        return get_postgresql_connection()
-    
-    raise ValueError("Motor no soportado")
-
-
-def get_sqlite_connection():
-    db_name = DATABASE_URL.replace("sqlite:///", "")
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-    DATABASE_PATH = os.path.join(BASE_DIR, db_name)
-    conn = sqlite3.connect(DATABASE_PATH)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = ON")
-    return conn
-
-def get_postgresql_connection():
-    conn = psycopg.connect(
-        DATABASE_URL,
-        row_factory=dict_row # type: ignore[arg-type]
-    )
-    return conn
-
 
 def asegurar_csrf_token():
 
     if "csrf_token" not in session:
         session["csrf_token"] = secrets.token_hex(32)
+
+
+
+def validar_csrf():
+
+    token_form = request.form.get("csrf_token")
+
+    token_session = session.get("csrf_token")
+
+    if (
+        not token_form or
+        not token_session or
+        token_form != token_session
+    ):
+        abort(403)
+
+
+
+def normalizar_nombre(nombre):
+
+    if nombre is None:
+        return ""
+
+    nombre = nombre.strip()
+
+    nombre = re.sub(
+        r"\s+",
+        " ",
+        nombre
+    )
+
+    if len(nombre) > MAX_NOMBRE_LENGTH:
+        return ""
+
+    if not re.fullmatch(
+        r"[A-Za-zÁÉÍÓÚÜÑáéíóúüñ\s]+",
+        nombre
+    ):
+        return ""
+
+    nombre = unicodedata.normalize(
+        "NFD",
+        nombre
+    )
+
+    nombre = "".join(
+        c for c in nombre
+        if unicodedata.category(c) != "Mn"
+    )
+
+    nombre = nombre.upper()
+
+    return nombre
 
 def login_required(f):
 
@@ -151,58 +133,10 @@ def login_required(f):
     
     return decorated_function
 
-def validar_csrf():
-
-    token_form = request.form.get("csrf_token")
+logging.info(
+    f"Base de datos activa: {DEPLOY_ENV}"
+)
     
-    token_session = session.get("csrf_token")
-    
-    if (
-        not token_form or
-        not token_session or
-        token_form != token_session
-    ):
-        abort(403)
-
-MAX_NOMBRE_LENGTH = 100
-MAX_CORREO_LENGTH = 255
-
-def normalizar_nombre(nombre):
-    
-    if nombre is None:
-        return ""
-    
-    nombre = nombre.strip()
-    
-    nombre = re.sub(
-        r"\s+",
-        " ",
-        nombre
-    )
-    
-    if len(nombre) > MAX_NOMBRE_LENGTH:
-        return ""
-    
-    if not re.fullmatch(
-        r"[A-Za-zÁÉÍÓÚÜÑáéíóúüñ\s]+",
-        nombre
-    ):
-        return ""
-    
-    nombre = unicodedata.normalize(
-        "NFD",
-        nombre
-    )
-    
-    nombre = "".join(
-        c for c in nombre
-        if unicodedata.category(c) != "Mn"
-    )
-    
-    nombre = nombre.upper()
-    
-    return nombre
-
 @app.route("/")
 def inicio():
     return render_template("inicio.html")
@@ -448,7 +382,7 @@ def asistencia_admin():
     if desde:
 
         where_clauses.append(
-            f"DATE(fecha_hora) >= {DB_PARAM}"
+            "DATE(fecha_hora) >= %s"
         )
 
         params.append(desde)
@@ -456,7 +390,7 @@ def asistencia_admin():
     if hasta:
 
         where_clauses.append(
-            f"DATE(fecha_hora) <= {DB_PARAM}"
+            "DATE(fecha_hora) <= %s"
         )
 
         params.append(hasta)
@@ -502,7 +436,7 @@ def asistencia_admin():
     if desde:
 
         personas_where_clauses.append(
-            f"DATE(a.fecha_hora) >= {DB_PARAM}"
+            "DATE(a.fecha_hora) >= %s"
         )
 
         personas_params.append(desde)
@@ -510,7 +444,7 @@ def asistencia_admin():
     if hasta:
 
         personas_where_clauses.append(
-            f"DATE(a.fecha_hora) <= {DB_PARAM}"
+            "DATE(a.fecha_hora) <= %s"
         )
 
         personas_params.append(hasta)
@@ -659,7 +593,7 @@ def exportar_asistencia_excel():
     if desde:
     
         where_clauses.append(
-            f"date(fecha_hora) >= {DB_PARAM}"
+            "date(fecha_hora) >= %s"
         )
     
         params.append(desde)
@@ -667,7 +601,7 @@ def exportar_asistencia_excel():
     if hasta:
     
         where_clauses.append(
-            f"date(fecha_hora) <= {DB_PARAM}"
+            "date(fecha_hora) <= %s"
         )
     
         params.append(hasta)
@@ -713,7 +647,7 @@ def exportar_asistencia_excel():
     if desde:
     
         personas_where_clauses.append(
-            f"date(a.fecha_hora) >= {DB_PARAM}"
+            "date(a.fecha_hora) >= %s"
         )
     
         personas_params.append(desde)
@@ -721,7 +655,7 @@ def exportar_asistencia_excel():
     if hasta:
     
         personas_where_clauses.append(
-            f"date(a.fecha_hora) <= {DB_PARAM}"
+            "date(a.fecha_hora) <= %s"
         )
     
         personas_params.append(hasta)
@@ -933,9 +867,9 @@ def regenerar_token():
         conn = get_db_connection()
 
         conn.execute(
-            f"""
+            """
             UPDATE configuracion
-            SET token_actual = {DB_PARAM},
+            SET token_actual = %s,
                 qr_updated_at = CURRENT_TIMESTAMP
             WHERE id = 1
             """,
@@ -1056,7 +990,16 @@ def qr_pdf():
     c.save()
     buffer.seek(0)
 
-    return send_file(buffer, mimetype="application/pdf", as_attachment=True, download_name="qr_asistencia.pdf")
+    nombre_archivo = (
+        f"qr_asistencia_{proximo_sabado.day}{MESES[proximo_sabado.month]}{proximo_sabado.year}.pdf"
+    )
+    
+    return send_file(
+        buffer,
+        mimetype="application/pdf",
+        as_attachment=True,
+        download_name=nombre_archivo
+    )
     
 @app.route("/admin/configuracion/correo", methods=["POST"])
 @login_required
@@ -1107,9 +1050,9 @@ def editar_correo():
             return redirect(url_for("admin"))
 
         conn.execute(
-            f"""
+            """
             UPDATE configuracion
-            SET correo_reportes = {DB_PARAM}
+            SET correo_reportes = %s
             WHERE id = 1
             """,
             (correo,)
@@ -1208,10 +1151,10 @@ def agregar_persona():
         conn = get_db_connection()
 
         existe = conn.execute(
-            f"""
+            """
             SELECT 1
             FROM personas
-            WHERE nombre = {DB_PARAM}
+            WHERE nombre = %s
             """,
             (nombre,)
         ).fetchone()
@@ -1226,9 +1169,9 @@ def agregar_persona():
             return redirect(url_for("personas"))
 
         conn.execute(
-            f"""
+            """
             INSERT INTO personas (nombre)
-            VALUES ({DB_PARAM})
+            VALUES (%s)
             """,
             (nombre,)
         )
@@ -1274,10 +1217,10 @@ def desactivar_persona(id):
         conn = get_db_connection()
 
         persona = conn.execute(
-            f"""
+            """
             SELECT id, activo
             FROM personas
-            WHERE id = {DB_PARAM}
+            WHERE id = %s
             """,
             (id,)
         ).fetchone()
@@ -1295,10 +1238,10 @@ def desactivar_persona(id):
             return redirect(url_for("personas"))
 
         conn.execute(
-            f"""
+            """
             UPDATE personas
             SET activo = 0
-            WHERE id = {DB_PARAM}
+            WHERE id = %s
             """,
             (id,)
         )
@@ -1344,10 +1287,10 @@ def reactivar_persona(id):
         conn = get_db_connection()
 
         persona = conn.execute(
-            f"""
+            """
             SELECT id, activo
             FROM personas
-            WHERE id = {DB_PARAM}
+            WHERE id = %s
             """,
             (id,)
         ).fetchone()
@@ -1365,10 +1308,10 @@ def reactivar_persona(id):
             return redirect(url_for("personas_inactivas"))
 
         conn.execute(
-            f"""
+            """
             UPDATE personas
             SET activo = 1
-            WHERE id = {DB_PARAM}
+            WHERE id = %s
             """,
             (id,)
         )
@@ -1412,10 +1355,10 @@ def editar_persona(id):
         conn = get_db_connection()
 
         persona = conn.execute(
-            f"""
+            """
             SELECT id, nombre, activo
             FROM personas
-            WHERE id = {DB_PARAM}
+            WHERE id = %s
             """,
             (id,)
         ).fetchone()
@@ -1444,11 +1387,11 @@ def editar_persona(id):
                 return redirect(url_for("editar_persona", id=id, next=volver_url))
 
             existe = conn.execute(
-                f"""
+                """
                 SELECT 1
                 FROM personas
-                WHERE nombre = {DB_PARAM}
-                AND id != {DB_PARAM}
+                WHERE nombre = %s
+                AND id != %s
                 """,
                 (nombre, id)
             ).fetchone()
@@ -1458,10 +1401,10 @@ def editar_persona(id):
                 return redirect(url_for("editar_persona", id=id, next=volver_url))
 
             conn.execute(
-                f"""
+                """
                 UPDATE personas
-                SET nombre = {DB_PARAM}
-                WHERE id = {DB_PARAM}
+                SET nombre = %s
+                WHERE id = %s
                 """,
                 (nombre, id)
             )
@@ -1558,10 +1501,10 @@ def formulario(token):
                 )
 
             persona = conn.execute(
-                f"""
+                """
                 SELECT id, nombre
                 FROM personas
-                WHERE id = {DB_PARAM}
+                WHERE id = %s
                 AND activo = 1
                 """,
                 (persona_id,)
@@ -1570,11 +1513,11 @@ def formulario(token):
             if persona is None:
                 abort(404)
             
-            existe_sql = f"""
+            existe_sql = """
                 SELECT 1
                 FROM asistencias
-                WHERE persona_id = {DB_PARAM}
-                AND DATE(fecha_hora) = {DB_CURRENT_DATE}
+                WHERE persona_id = %s
+                AND DATE(fecha_hora) = CURRENT_DATE
             """
             
             existe = conn.execute(
@@ -1597,9 +1540,9 @@ def formulario(token):
                 )
 
             conn.execute(
-                f"""
+                """
                 INSERT INTO asistencias (persona_id)
-                VALUES ({DB_PARAM})
+                VALUES (%s)
                 """,
                 (persona_id,)
             )
