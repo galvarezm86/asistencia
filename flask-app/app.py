@@ -1,3 +1,5 @@
+from psycopg.sql import NULL
+from psycopg.types.array import ARRAY_NULL
 from flask import Flask, render_template, request, redirect, url_for, session, flash, abort, send_file, Response
 import os
 import secrets
@@ -237,9 +239,9 @@ def admin():
         token=config["token_actual"]
     )
 
-@app.route("/qr")
+@app.route("/admin/qr")
 @login_required
-def qr():
+def admin_qr():
 
     conn = None
 
@@ -285,13 +287,11 @@ def qr():
                 fecha_qr.isocalendar().week
                 != datetime.now().isocalendar().week
             )
-
-        fecha_qr=fecha_qr_formateada
-            
+        
         return render_template(
             "admin/qr.html",
             token=config["token_actual"],
-            qr_updated_at=fecha_qr,
+            qr_updated_at=fecha_qr_formateada,
             qr_vencido=qr_vencido
         )
 
@@ -313,7 +313,7 @@ def qr():
         if conn:
             conn.close()
 
-@app.route("/admin/qr_imagen")
+@app.route("/admin/qr/imagen")
 @login_required
 def qr_imagen():
 
@@ -856,7 +856,7 @@ def exportar_asistencia_excel():
         conn.close()
 
 
-@app.route("/admin/regenerar_token", methods = ["POST"])
+@app.route("/admin/qr/regenerar", methods = ["POST"])
 @login_required
 def regenerar_token():
 
@@ -906,20 +906,31 @@ def regenerar_token():
         if conn:
             conn.close()
 
-    return redirect(url_for("qr"))
+    return redirect(url_for("admin_qr"))
 
-@app.route("/admin/qr_pdf", methods=["POST"])
+@app.route("/admin/qr/pdf", methods=["POST"])
 @login_required
 def qr_pdf():
 
     validar_csrf()
     
     # 1. Obtener token actual
-    conn = get_db_connection()
-    config = conn.execute("SELECT token_actual FROM configuracion WHERE id = 1").fetchone()
-    conn.close()
+    conn = None
+    try:
+        conn = get_db_connection()
+        config = conn.execute(
+            """
+            SELECT token_actual
+            FROM configuracion
+            WHERE id = 1
+            """
+        ).fetchone()
+        token = config["token_actual"]
+    finally:
+        if conn:
+            conn.close()
 
-    token = config["token_actual"]
+    
 
     # 2. URL del formulario
     url_formulario = url_for("formulario", token=token, _external=True)
