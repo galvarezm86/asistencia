@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash, abort, send_file
+from flask import Flask, render_template, request, redirect, url_for, session, flash, abort, send_file, Response
 import os
 import secrets
 import unicodedata
@@ -141,6 +141,10 @@ logging.info(
 def inicio():
     return render_template("inicio.html")
 
+@app.get("/health")
+def health():
+    return Response("OK", status=200, mimetype="text/plain")
+    
 @app.route("/login", methods=["GET", "POST"])
 def login():
 
