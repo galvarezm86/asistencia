@@ -526,3 +526,19 @@ table {
     margin: 1rem 0;
 }
 
+.password-container {
+
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+
+}
+
+#toggle-password {
+
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+
+}
