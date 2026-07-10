@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+
+{% block title %}Método no permitido{% endblock %}
+
+{% block content %}
+
+<h1>Error 405</h1>
+
+<p>La página existe, pero la operación solicitada no está permitida.</p>
+
+<a href="{{ url_for('inicio') }}">Volver al inicio</a>
+
+{% endblock %}
