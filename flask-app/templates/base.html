@@ -26,29 +26,36 @@
     
                 </div>
 
-                <div class="nav-right">
+            <div class="nav-right">
 
-                    <form
-                        method="POST"
-                        action="{{ url_for('logout') }}"
+                <a
+                    href="{{ url_for('cambiar_clave') }}"
+                    class="logout-link"
+                >
+                    Cambiar contraseña
+                </a>
+
+                <form
+                    method="POST"
+                    action="{{ url_for('logout') }}"
+                >
+
+                    <input
+                        type="hidden"
+                        name="csrf_token"
+                        value="{{ session.csrf_token }}"
                     >
 
-                        <input
-                            type="hidden"
-                            name="csrf_token"
-                            value="{{ session.csrf_token }}"
-                        >
+                    <button
+                        type="submit"
+                        class="logout-link"
+                    >
+                        Cerrar sesión
+                    </button>
 
-                        <button
-                            type="submit"
-                            class="logout-link"
-                        >
-                            Cerrar sesión
-                        </button>
+                </form>
 
-                    </form>
-
-                </div>
+            </div>
 
             {% else %}
 

@@ -16,7 +16,9 @@ from reportlab.lib.utils import ImageReader
 from openpyxl import Workbook
 from openpyxl.utils import get_column_letter
 from openpyxl.styles import Font, Alignment
+from werkzeug.security import check_password_hash
 from utils.db import get_db_connection
+from utils.users import _crear_o_actualizar_usuario
 
 
 # =============================================================================
@@ -27,8 +29,7 @@ app = Flask(__name__)
 # =============================================================================
 # CONFIGURACIÓN
 # =============================================================================
-ADMIN_USER = os.environ["ADMIN_USER"]
-ADMIN_PASSWORD = os.environ["ADMIN_PASSWORD"]
+
 app.secret_key = os.environ["SESSION_SECRET"]
 DEPLOY_ENV = os.environ.get("DEPLOY_ENV", "DEVELOPMENT").upper()
 
@@ -579,8 +580,15 @@ def login():
 
         validar_csrf()
         
-        username = request.form.get("username", "")
-        password = request.form.get("password", "")
+        username = request.form.get(
+            "username",
+            ""
+        ).strip().lower()
+
+        password = request.form.get(
+            "password",
+            ""
+        )
 
         if not username or not password:
 
@@ -591,32 +599,144 @@ def login():
 
             return redirect(url_for("login"))
 
-        if (
-            username == ADMIN_USER and
-            password == ADMIN_PASSWORD
-        ):
+        conn = None
+        
+        try:
+            conn = get_db_connection()
+            usuario = conn.execute(
+                """
+                SELECT
+                    id,
+                    username,
+                    password_hash,
+                    rol,
+                    must_change_password
+                FROM usuarios
+                WHERE username = %s
+                """,
+                (username,)
+            ).fetchone()
+            
+            if (usuario and check_password_hash(
+                    usuario["password_hash"],
+                    password
+                )
+            ):
+    
+                session.clear()
+                session.permanent = True
+                session["admin"] = True
+                session["user_id"] = usuario["id"]
+                session["username"] = usuario["username"]
+                session["rol"] = usuario["rol"]
+                session["must_change_password"] = usuario["must_change_password"]
+                session["csrf_token"] = secrets.token_hex(32)
 
-            session.clear()
-            session.permanent = True
-            session["admin"] = True
+                if usuario["must_change_password"]:
 
-            session["csrf_token"] = secrets.token_hex(32)
+                    return redirect(url_for("cambiar_clave"))
 
+                flash(
+                    "Sesión iniciada correctamente",
+                    "success"
+                )
+
+                return redirect(url_for("admin"))
+    
             flash(
-                "Sesión iniciada correctamente",
-                "success"
+                "Credenciales incorrectas",
+                "error"
             )
+    
+            return redirect(url_for("login"))
 
+        except DATABASE_ERRORS:
+            app.logger.exception(
+                "Error en la base de datos al iniciar sesión"
+            )
+            flash(
+                "Ocurrió un error interno", "error")
+            return redirect(url_for("login"))
+
+        finally:
+            if conn:
+                conn.close()
+                
+    return render_template("login.html")
+
+@app.route("/cambiar-clave", methods=["GET", "POST"])
+@login_required
+def cambiar_clave():
+    if request.method == "POST":
+        validar_csrf()
+        clave_actual = request.form.get("clave_actual")
+        clave_nueva = request.form.get("clave_nueva")
+        clave_nueva_confirmacion = request.form.get("clave_nueva_confirmacion")
+        
+        if not clave_actual or not clave_nueva or not clave_nueva_confirmacion:
+            flash("Todos los campos son obligatorios", "error")
+            return redirect(url_for("cambiar_clave"))
+        
+        if clave_nueva != clave_nueva_confirmacion:
+            flash("Las nuevas claves no coinciden", "error")
+            return redirect(url_for("cambiar_clave"))
+        
+        usuario_actual = session["user_id"]
+        conn = None
+        try:
+            conn = get_db_connection()
+            usuario = conn.execute(
+                """
+                SELECT password_hash
+                FROM usuarios
+                WHERE id = %s
+                """,
+                (usuario_actual,)
+            ).fetchone()
+
+            if not usuario:
+                flash(
+                    "Ocurrió un error interno.",
+                    "error"
+                )
+                return redirect(url_for("logout"))
+            
+            if not check_password_hash(
+                usuario["password_hash"],
+                clave_actual
+            ):
+                flash(
+                    "La clave actual no es correcta",
+                    "error"
+                )
+                return redirect(url_for("cambiar_clave"))
+
+            if clave_nueva == clave_actual:
+                flash("La nueva clave debe ser distinta a la actual", "error")
+                return redirect(url_for("cambiar_clave"))
+
+            if len(clave_nueva) < 8:
+                flash("La nueva clave debe tener al menos 8 caracteres", "error")
+                return redirect(url_for("cambiar_clave"))
+
+            _crear_o_actualizar_usuario(conn, session["username"], clave_nueva, session["rol"], False)
+            conn.commit()
+            session["must_change_password"] = False
+            flash("Clave cambiada correctamente", "success")
             return redirect(url_for("admin"))
 
-        flash(
-            "Credenciales incorrectas",
-            "error"
-        )
+        except DATABASE_ERRORS:
+            app.logger.exception("Error en la base de datos al cambiar clave")
+            flash("Ocurrió un error interno", "error")
+            return redirect(url_for("cambiar_clave"))
 
-        return redirect(url_for("login"))
+        finally:
+            if conn:
+                conn.close()
+    
+    asegurar_csrf_token()
 
-    return render_template("login.html")
+    return render_template("admin/cambiar_clave.html")
         
 @app.route("/logout", methods=["POST"])
 @login_required

@@ -1,5 +1,6 @@
 import os
 from utils.db import get_db_connection
+from utils.users import _crear_o_actualizar_usuario
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_DIR = os.path.join(
@@ -36,6 +37,14 @@ if __name__ == "__main__":
         run_sql(conn, SCHEMA_FILE)
         run_sql(conn, SEED_FILE)
         run_sql(conn, MIGRATION_FILE)
+        # Crear usuario administrador inicial.
+        usuario_creado = _crear_o_actualizar_usuario(
+            conn,
+            "admin",
+            "ClaveInicial12345",
+            "admin",
+            True
+        )
 
         conn.commit()
 

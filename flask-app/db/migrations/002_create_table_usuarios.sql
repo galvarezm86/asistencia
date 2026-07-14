@@ -1,0 +1,17 @@
+CREATE TABLE usuarios (
+
+    id SERIAL PRIMARY KEY,
+
+    username VARCHAR(50) NOT NULL UNIQUE,
+
+    password_hash TEXT NOT NULL,
+
+    rol VARCHAR(20) NOT NULL,
+
+    must_change_password BOOLEAN NOT NULL DEFAULT FALSE,
+
+    activo BOOLEAN NOT NULL DEFAULT TRUE,
+
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+
+);

@@ -1,10 +1,11 @@
 import os
 from utils.db import get_db_connection
+from utils.users import _crear_o_actualizar_usuario
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_DIR = os.path.join(BASE_DIR, "db")
 MIGRATION_DIR = os.path.join(DB_DIR, "migrations")
-MIGRATION_FILE = ""
+MIGRATION_FILE = "002_create_table_usuarios.sql"
 
 DEPLOY_ENV = os.environ.get("DEPLOY_ENV", "DEVELOPMENT").upper()
 
@@ -30,9 +31,17 @@ if __name__ == "__main__":
 
     try:
         run_sql(conn, MIGRATION_FILE)
+        # Crear usuario administrador inicial.
+        _crear_o_actualizar_usuario(
+            conn,
+            "admin",
+            "ClaveTemporal12345",
+            "admin",
+            True
+        )
         conn.commit()
+        print("Migración ejecutada correctamente")
 
     finally:
-        conn.close()
 
-    print("Migración ejecutada correctamente")
+        conn.close
