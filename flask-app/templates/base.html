@@ -21,6 +21,14 @@
                     >
                         Panel admin
                     </a>
+
+                    {% if session.get("rol") == "superadmin" %}
+
+                        <a href="{{ url_for('superadmin') }}">
+                            Superadministración
+                        </a>
+
+                    {% endif %}
     
                     {% block nav_section %}{% endblock %}
     

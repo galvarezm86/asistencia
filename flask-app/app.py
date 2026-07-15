@@ -19,6 +19,7 @@ from openpyxl.styles import Font, Alignment
 from werkzeug.security import check_password_hash
 from utils.db import get_db_connection
 from utils.users import _crear_o_actualizar_usuario
+from utils.users import ROL_ADMIN, ROL_SUPERADMIN
 
 
 # =============================================================================
@@ -267,6 +268,15 @@ def _obtener_datos_asistencia(desde, hasta):
 
         return fechas, personas, asistencias
 
+    except DATABASE_ERRORS:
+        if conn:
+            conn.rollback()
+
+        app.logger.exception(
+            "Error en la base de datos al obtener datos de asistencia"
+        )
+        abort(500)
+
     finally:
         if conn:
             conn.close()
@@ -323,6 +333,37 @@ def login_required(f):
     
     return decorated_function
 
+    
+
+def change_password_required(view):
+
+    @wraps(view)
+    def wrapped(*args, **kwargs):
+
+        if (
+            session.get("must_change_password", False)
+            and request.endpoint != "cambiar_clave"
+        ):
+
+            return redirect(
+                url_for("cambiar_clave")
+            )
+
+        return view(*args, **kwargs)
+
+    return wrapped
+
+def superadmin_required(view):
+
+    @wraps(view)
+    def wrapped(*args, **kwargs):
+    
+        if session.get("rol") != ROL_SUPERADMIN:
+            abort(403)
+    
+        return view(*args, **kwargs)
+    
+    return wrapped
 
 # =============================================================================
 # ERRORS HANDLERS
@@ -350,13 +391,16 @@ def internal_server_error(error):
         "errors/500.html"
     ), 500
 
-@app.route("/")
-def inicio():
-    return render_template("inicio.html")
+
 
 # =============================================================================
 # RUTAS PÚBLICAS
 # =============================================================================
+
+@app.route("/")
+def inicio():
+    return render_template("inicio.html")
+
 
 @app.get("/health")
 def health():
@@ -565,7 +609,7 @@ def confirmacion():
     )
 
 # =============================================================================
-# RUTAS ADMIN
+# RUTAS AUTENTICACIÓN
 # =============================================================================
 
 @app.route("/login", methods=["GET", "POST"])
@@ -651,6 +695,8 @@ def login():
             return redirect(url_for("login"))
 
         except DATABASE_ERRORS:
+            if conn:
+                conn.rollback()
             app.logger.exception(
                 "Error en la base de datos al iniciar sesión"
             )
@@ -726,6 +772,8 @@ def cambiar_clave():
             return redirect(url_for("admin"))
 
         except DATABASE_ERRORS:
+            if conn:
+                conn.rollback()
             app.logger.exception("Error en la base de datos al cambiar clave")
             flash("Ocurrió un error interno", "error")
             return redirect(url_for("cambiar_clave"))
@@ -752,14 +800,130 @@ def logout():
     )
 
     return redirect(url_for("login"))
-   
+
+# =============================================================================
+# RUTAS ADMIN
+# =============================================================================
+
 @app.route("/admin")
 @login_required
+@change_password_required
 def admin():
     return render_template(
         "admin/admin.html"
     )
 
+@app.route("/superadmin", methods=["GET", "POST"])
+@login_required
+@change_password_required
+@superadmin_required
+def superadmin():
+
+    if request.method == "POST":
+        validar_csrf()
+        # Leer passwrd temporal
+        admin_password_temp = request.form.get("admin_password_temp")
+        # Validar que no sea vacío, longitud mínima
+        if not admin_password_temp or len(admin_password_temp) < 8:
+            flash("La contraseña debe tener al menos 8 caracteres", "error")
+            return redirect(url_for("superadmin"))
+        # Se guarda en la sesión
+        session["admin_password_temp"] = admin_password_temp
+        # Redirigir a confirmación
+        return redirect(url_for("confirmar_restablecimiento"))
+    
+    return render_template(
+        "superadmin/superadmin.html"
+    )
+
+@app.route("/superadmin/confirmar-restablecimiento", methods=["GET", "POST"])
+@login_required
+@change_password_required
+@superadmin_required
+def confirmar_restablecimiento():
+    
+    if request.method == "POST":
+        validar_csrf()
+        # Restablecer contraseña del admin
+        admin_password_temp = session.get("admin_password_temp")
+        if admin_password_temp is None:
+            flash("No se ha generado una contraseña temporal", "error")
+            return redirect(url_for("superadmin"))
+
+        if len(admin_password_temp) < 8:
+            flash(
+                "La contraseña debe tener al menos 8 caracteres",
+                "error"
+            )
+            return redirect(url_for("superadmin"))
+
+        conn = None
+        try:
+            conn = get_db_connection()
+            _crear_o_actualizar_usuario(
+                conn,
+                "admin",
+                admin_password_temp,
+                ROL_ADMIN,
+                True
+            )
+            conn.commit()
+
+        except DATABASE_ERRORS:
+            if conn:
+                conn.rollback()
+            app.logger.exception("Error en la base de datos al restablecer contraseña")
+            flash("Ocurrió un error interno", "error")
+            return redirect(url_for("superadmin"))
+
+        finally:
+            if conn:
+                conn.close()
+
+        session.pop(
+            "admin_password_temp",
+            None
+        )
+
+        flash(
+            "La contraseña del administrador fue restablecida correctamente.",
+            "success"
+        )
+    
+        return redirect(
+            url_for("superadmin")
+        )
+
+    return render_template(
+        "superadmin/confirmar_restablecimiento.html",
+        admin_password_temp = session["admin_password_temp"]
+    )
+
+@app.route(
+    "/superadmin/cancelar-restablecimiento",
+    methods=["POST"]
+)
+@login_required
+@change_password_required
+@superadmin_required
+def cancelar_restablecimiento():
+
+    validar_csrf()
+    session.pop(
+        "admin_password_temp",
+        None
+    )
+
+    flash(
+        "Restablecimiento cancelado",
+        "success"
+    )
+
+    return redirect(
+        url_for("superadmin")
+    )
+    
+    
 
 # =============================================================================
 # GESTIÓN QR
@@ -767,6 +931,7 @@ def admin():
 
 @app.route("/admin/qr")
 @login_required
+@change_password_required
 def admin_qr():
 
     conn = None
@@ -822,7 +987,8 @@ def admin_qr():
         )
 
     except DATABASE_ERRORS:
-
+        if conn:
+            conn.rollback()
         app.logger.exception(
             "Error en la base de datos al cargar gestión QR"
         )
@@ -841,6 +1007,7 @@ def admin_qr():
 
 @app.route("/admin/qr/imagen")
 @login_required
+@change_password_required
 def qr_imagen():
 
     conn = None
@@ -880,6 +1047,8 @@ def qr_imagen():
         )
 
     except DATABASE_ERRORS:
+        if conn:
+            conn.rollback()
 
         app.logger.exception(
             "Error en la base de datos al generar QR"
@@ -894,6 +1063,7 @@ def qr_imagen():
 
 @app.route("/admin/qr/pdf", methods=["POST"])
 @login_required
+@change_password_required
 def qr_pdf():
 
     validar_csrf()
@@ -910,6 +1080,13 @@ def qr_pdf():
             """
         ).fetchone()
         token = config["token_actual"]
+    except DATABASE_ERRORS:
+        if conn:
+            conn.rollback()
+        app.logger.exception(
+            "Error en la base de datos al generar PDF"
+        )
+        abort(500)
     finally:
         if conn:
             conn.close()
@@ -1000,8 +1177,9 @@ def qr_pdf():
         download_name=nombre_archivo
     )
 
-@app.route("/admin/qr/regenerar", methods = ["POST"])
+@app.route("/admin/qr/regenerar", methods=["POST"])
 @login_required
+@change_password_required
 def regenerar_token():
 
     validar_csrf()
@@ -1044,6 +1222,7 @@ def regenerar_token():
             "Ocurrió un error interno",
             "error"
         )
+        return redirect(url_for("admin_qr"))
 
     finally:
 
@@ -1059,6 +1238,7 @@ def regenerar_token():
 
 @app.route("/admin/asistencia")
 @login_required
+@change_password_required
 def asistencia_admin():
 
     desde = request.args.get("desde")
@@ -1116,6 +1296,7 @@ def asistencia_admin():
 
 @app.route("/admin/asistencia/excel")
 @login_required
+@change_password_required
 def exportar_asistencia_excel():
     desde = request.args.get("desde")
     hasta = request.args.get("hasta")
@@ -1248,6 +1429,7 @@ def exportar_asistencia_excel():
 
 @app.route("/admin/personas")
 @login_required
+@change_password_required
 def personas():
 
     conn = get_db_connection()
@@ -1270,6 +1452,7 @@ def personas():
 
 @app.route("/admin/personas/inactivas")
 @login_required
+@change_password_required
 def personas_inactivas():
 
     conn = get_db_connection()
@@ -1292,6 +1475,7 @@ def personas_inactivas():
 
 @app.route("/admin/personas/agregar", methods=["POST"])
 @login_required
+@change_password_required
 def agregar_persona():
 
     validar_csrf()
@@ -1356,6 +1540,7 @@ def agregar_persona():
             "Ocurrió un error interno",
             "error"
         )
+        return redirect(url_for("personas"))
 
     finally:
 
@@ -1366,6 +1551,7 @@ def agregar_persona():
 
 @app.route("/admin/personas/desactivar/<int:id>", methods=["POST"])
 @login_required
+@change_password_required
 def desactivar_persona(id):
 
     validar_csrf()
@@ -1426,6 +1612,7 @@ def desactivar_persona(id):
             "Ocurrió un error interno",
             "error"
         )
+        return redirect(url_for("personas"))
 
     finally:
 
@@ -1436,6 +1623,7 @@ def desactivar_persona(id):
 
 @app.route("/admin/personas/reactivar/<int:id>", methods=["POST"])
 @login_required
+@change_password_required
 def reactivar_persona(id):
 
     validar_csrf()
@@ -1496,6 +1684,7 @@ def reactivar_persona(id):
             "Ocurrió un error interno",
             "error"
         )
+        return redirect(url_for("personas_inactivas"))
 
     finally:
 
@@ -1506,6 +1695,7 @@ def reactivar_persona(id):
 
 @app.route("/admin/persona/<int:id>/editar", methods=["GET", "POST"])
 @login_required
+@change_password_required
 def editar_persona(id):
 
     conn = None

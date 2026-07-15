@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block title %}
+Superadministración
+{% endblock %}
+
+{% block content %}
+
+<div class="form-card centered-card">
+
+    <h1>
+        Superadministración
+    </h1>
+
+    <br>
+    
+    <p>
+        Desde este panel es posible realizar tareas de mantenimiento
+        exclusivas del superadministrador.
+    </p>
+
+    <br>
+    
+    <hr>
+
+    <br>
+    
+    <h2>
+        Restablecer contraseña del administrador
+    </h2>
+    
+    <br>
+    
+    <p>
+        Escriba una contraseña temporal para el administrador.
+        El administrador deberá cambiarla obligatoriamente
+        en su próximo inicio de sesión.
+    </p>
+
+    <form
+        method="POST"
+        action="{{ url_for('superadmin') }}"
+    >
+
+        <input
+            type="hidden"
+            name="csrf_token"
+            value="{{ session.csrf_token }}"
+        >
+
+        <label for="password_temporal">
+            Contraseña temporal
+        </label>
+
+        <input
+            type="text"
+            id="admin_password_temp"
+            name="admin_password_temp"
+            required
+            minlength="8"
+            maxlength="64"
+            autocomplete="off"
+            autocapitalize="off"
+            autocorrect="off"
+            spellcheck="false"
+        >
+
+        <br><br>
+
+        <button
+            type="submit"
+            class="btn btn-primary"
+        >
+            Restablecer contraseña
+        </button>
+
+    </form>
+
+</div>
+
+{% endblock %}
+

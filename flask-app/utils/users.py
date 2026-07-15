@@ -1,5 +1,8 @@
 from werkzeug.security import generate_password_hash
 
+ROL_ADMIN = "admin"
+ROL_SUPERADMIN = "superadmin"
+
 def _crear_o_actualizar_usuario(
     conn,
     username,
@@ -26,8 +29,8 @@ def _crear_o_actualizar_usuario(
     if not password:
         raise ValueError("La contraseña es requerida")
 
-    if rol not in ("admin", "superadmin"):
-        raise ValueError("El rol debe ser 'admin' o 'superadmin'")
+    if rol not in (ROL_ADMIN, ROL_SUPERADMIN):
+        raise ValueError(f"El rol debe ser '{ROL_ADMIN}' o '{ROL_SUPERADMIN}'")
 
     if not isinstance(
         must_change_password,

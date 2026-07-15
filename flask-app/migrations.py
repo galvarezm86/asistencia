@@ -1,6 +1,7 @@
 import os
 from utils.db import get_db_connection
 from utils.users import _crear_o_actualizar_usuario
+from utils.users import ROL_ADMIN, ROL_SUPERADMIN
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_DIR = os.path.join(BASE_DIR, "db")
@@ -36,7 +37,15 @@ if __name__ == "__main__":
             conn,
             "admin",
             "ClaveTemporal12345",
-            "admin",
+            ROL_ADMIN,
+            True
+        )
+        # Crear usuario superadministrador inicial.
+        _crear_o_actualizar_usuario(
+            conn,
+            "superadmin",
+            "ClaveTemporal12345",
+            ROL_SUPERADMIN,
             True
         )
         conn.commit()

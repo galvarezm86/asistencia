@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}
+Confirmar restablecimiento
+{% endblock %}
+
+{% block content %}
+
+<div class="form-card centered-card">
+
+    <h1>
+        Confirmar restablecimiento
+    </h1>
+
+    <p>
+        Está a punto de restablecer la contraseña del usuario administrador.
+    </p>
+
+    <br>
+    
+    <p>
+        La nueva contraseña temporal será:
+    </p>
+
+    <div class="password-display">
+
+        <strong>
+            {{ admin_password_temp }}
+        </strong>
+
+    </div>
+
+    <br>
+    
+    <p>
+        El administrador deberá cambiar esta contraseña
+        obligatoriamente al iniciar sesión.
+    </p>
+
+    <div class="button-group">
+        
+        <form
+            method="POST"
+        >
+    
+            <input
+                type="hidden"
+                name="csrf_token"
+                value="{{ session.csrf_token }}"
+            >
+    
+            <button
+                type="submit"
+                class="btn btn-primary"
+            >
+                Confirmar restablecimiento
+            </button>
+    
+        </form>
+    
+        <form
+            method="POST"
+            action="{{ url_for('cancelar_restablecimiento') }}"
+        >
+    
+            <input
+                type="hidden"
+                name="csrf_token"
+                value="{{ session.csrf_token }}"
+            >
+    
+            <button
+                type="submit"
+                class="btn btn-primary"
+            >
+                Cancelar
+            </button>
+    
+        </form>
+    </div>
+</div>
+
+{% endblock %}

@@ -542,3 +542,13 @@ table {
     padding: 0;
 
 }
+
+.centered-card {
+    text-align: center;
+}
+
+.button-group {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+}
