@@ -6,7 +6,7 @@ from utils.users import ROL_ADMIN, ROL_SUPERADMIN
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_DIR = os.path.join(BASE_DIR, "db")
 MIGRATION_DIR = os.path.join(DB_DIR, "migrations")
-MIGRATION_FILE = "002_create_table_usuarios.sql"
+MIGRATION_FILE = "003_agregar_device_tracking.sql"
 
 DEPLOY_ENV = os.environ.get("DEPLOY_ENV", "DEVELOPMENT").upper()
 
@@ -32,22 +32,6 @@ if __name__ == "__main__":
 
     try:
         run_sql(conn, MIGRATION_FILE)
-        # Crear usuario administrador inicial.
-        _crear_o_actualizar_usuario(
-            conn,
-            "admin",
-            "ClaveTemporal12345",
-            ROL_ADMIN,
-            True
-        )
-        # Crear usuario superadministrador inicial.
-        _crear_o_actualizar_usuario(
-            conn,
-            "superadmin",
-            "ClaveTemporal12345",
-            ROL_SUPERADMIN,
-            True
-        )
         conn.commit()
         print("Migración ejecutada correctamente")
 

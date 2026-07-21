@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash, abort, send_file, Response
+from flask import Flask, render_template, request, redirect, url_for, session, flash, abort, send_file, Response, make_response
 import os
 import secrets
 import unicodedata
@@ -7,6 +7,7 @@ import logging
 import io
 import qrcode
 import psycopg
+import uuid
 from zoneinfo import ZoneInfo
 from functools import wraps
 from datetime import timedelta, datetime
@@ -317,6 +318,22 @@ def _construir_tabla_asistencia(fechas, personas, asistencias):
 
     return tabla
 
+def _obtener_ip_cliente():
+
+    forwarded_for = request.headers.get("X-Forwarded-For")
+    
+    if forwarded_for:
+    
+        return forwarded_for.split(",")[0].strip()
+    
+    return request.remote_addr
+
+def _obtener_user_agent():
+
+    return request.headers.get(
+        "User-Agent",
+        ""
+    )
 
 # =============================================================================
 # DECORADORES
@@ -433,6 +450,13 @@ def formulario(token):
         if token != token_valido:
             abort(404)
 
+        device_id = request.cookies.get("device_id")
+        nueva_cookie = False
+
+        if not device_id:
+            device_id = str(uuid.uuid4())
+            nueva_cookie = True
+        
         if request.method == "POST":
 
             validar_csrf()
@@ -485,19 +509,19 @@ def formulario(token):
             if persona is None:
                 abort(404)
 
-            existe_sql = """
+            existe_persona_sql = """
                 SELECT 1
                 FROM asistencias
                 WHERE persona_id = %s
                 AND DATE(fecha_hora) = CURRENT_DATE
             """
 
-            existe = conn.execute(
-                existe_sql,
+            existe_persona = conn.execute(
+                existe_persona_sql,
                 (persona_id,)
             ).fetchone()
 
-            if existe:
+            if existe_persona:
 
                 flash(
                     "Asistencia ya registrada hoy",
@@ -511,12 +535,58 @@ def formulario(token):
                     )
                 )
 
+            # Los administradores pueden registrar múltiples asistencias desde sus dispositivos
+            if session.get("rol") not in (ROL_ADMIN, ROL_SUPERADMIN):
+                existe_device_sql = """
+                    SELECT 1
+                    FROM asistencias
+                    WHERE device_id = %s
+                    AND DATE(fecha_hora) = CURRENT_DATE
+                """
+    
+                existe_device = conn.execute(
+                    existe_device_sql,
+                    (device_id,)
+                ).fetchone()
+    
+                if existe_device:
+    
+                    flash(
+                        "Este dispositivo ya registró una asistencia hoy",
+                        "warning"
+                    )
+    
+                    return redirect(
+                        url_for(
+                            "formulario",
+                            token=token
+                        )
+                    )
+    
+            ip = _obtener_ip_cliente()
+            user_agent = _obtener_user_agent()
+            
             conn.execute(
                 """
-                INSERT INTO asistencias (persona_id)
-                VALUES (%s)
+                INSERT INTO asistencias (
+                    persona_id,
+                    device_id,
+                    ip,
+                    user_agent
+                )
+                VALUES (
+                    %s,
+                    %s,
+                    %s,
+                    %s
+                )
                 """,
-                (persona_id,)
+                (
+                    persona_id,
+                    device_id,
+                    ip,
+                    user_agent
+                )
             )
 
             conn.commit()
@@ -538,10 +608,23 @@ def formulario(token):
             """
         ).fetchall()
 
-        return render_template(
-            "formulario.html",
-            personas=personas
+        response = make_response(
+            render_template(
+                "formulario.html",
+                personas=personas
+            )
         )
+
+        if nueva_cookie:
+            response.set_cookie(
+                key="device_id",
+                value=device_id,
+                max_age=60 * 60 * 24 * 365,
+                httponly=True,
+                secure=request.is_secure,
+                samesite="Lax"
+            )
+        return response
 
     except INTEGRITY_ERRORS:
 

@@ -16,6 +16,12 @@ CREATE TABLE IF NOT EXISTS asistencias (
 
     fecha_hora TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
+    device_id UUID,
+
+    ip TEXT,
+
+    user_agent TEXT,    
+
     FOREIGN KEY (persona_id)
         REFERENCES personas(id)
         ON DELETE RESTRICT
