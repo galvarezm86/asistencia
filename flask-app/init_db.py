@@ -25,9 +25,9 @@ def run_sql(conn, file_name):
     with conn.cursor() as cur:
         cur.execute(sql, prepare=True)
 
-SCHEMA_FILE = "schema_postgresql.sql"
-SEED_FILE = "seed_postgresql.sql"
-MIGRATION_FILE = "migracion_inicial_postgresql.sql"
+SCHEMA_FILE = "schema.sql"
+SEED_FILE = "seed.sql"
+MIGRATION_FILE = "migracion_inicial.sql"
 
 if __name__ == "__main__":
 

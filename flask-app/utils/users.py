@@ -43,57 +43,54 @@ def _crear_o_actualizar_usuario(
     
     hashed_password = generate_password_hash(password)
 
-    with conn.cursor() as cur:
+    
+    usuario_existente = conn.execute(
+        """
+        SELECT id
+        FROM usuarios
+        WHERE username = %s
+        """,
+        (username,)
+    ).fetchone()
 
-        cur.execute(
+    usuario_creado = False
+    if usuario_existente:
+        conn.execute(
             """
-            SELECT id
-            FROM usuarios
+            UPDATE usuarios
+            SET
+                password_hash = %s,
+                rol = %s,
+                must_change_password = %s
             WHERE username = %s
             """,
-            (username,)
+            (
+                hashed_password,
+                rol,
+                must_change_password,
+                username
+            )
         )
-    
-        usuario_existente = cur.fetchone()
 
-        usuario_creado = False
-        if usuario_existente:
-            cur.execute(
-                """
-                UPDATE usuarios
-                SET
-                    password_hash = %s,
-                    rol = %s,
-                    must_change_password = %s
-                WHERE username = %s
-                """,
-                (
-                    hashed_password,
-                    rol,
-                    must_change_password,
-                    username
-                )
+    else:
+        conn.execute(
+            """
+            INSERT INTO usuarios (
+                username,
+                password_hash,
+                rol,
+                must_change_password
             )
-
-        else:
-            cur.execute(
-                """
-                INSERT INTO usuarios (
-                    username,
-                    password_hash,
-                    rol,
-                    must_change_password
-                )
-                VALUES (%s, %s, %s, %s)
-                """,
-                (
-                    username,
-                    hashed_password,
-                    rol,
-                    must_change_password
-                )
+            VALUES (%s, %s, %s, %s)
+            """,
+            (
+                username,
+                hashed_password,
+                rol,
+                must_change_password
             )
-            usuario_creado = True
+        )
+        usuario_creado = True
 
     return usuario_creado
 
