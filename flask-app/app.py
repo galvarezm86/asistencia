@@ -964,7 +964,7 @@ def solicitar_restauracion():
                         conn.commit()
         
                         try:
-                            panel_url = url_for("admin", _external=True)
+                            panel_url = url_for("superadmin", _external=True)
         
                             send_password_reset_request(
                                 usuario["username"],
