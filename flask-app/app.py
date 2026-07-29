@@ -1165,12 +1165,8 @@ def confirmar_restablecimiento():
         )
         return redirect(url_for("superadmin"))
 
-    return render_template(
-        "superadmin/confirmar_restablecimiento.html",
-        password_temp=password_temp
-    )
-    
     if request.method == "POST":
+        app.logger.info("Entró al POST confirmar_restablecimiento")
         validar_csrf()
         password_temp = session.get("password_temp")
         usuario_id = session.get("usuario_restauracion_id")
@@ -1191,6 +1187,7 @@ def confirmar_restablecimiento():
         conn = None
         try:
             conn = get_db_connection()
+            app.logger.info("Se estableció conexión a la base de datos")
             usuario = conn.execute(
                 """
                 SELECT username, rol
@@ -1215,7 +1212,9 @@ def confirmar_restablecimiento():
                 True,
                 False
             )
+            app.logger.info("Se actualizó el usuario")
             conn.commit()
+            app.logger.info("Se confirmó la transacción")
 
         except DATABASE_ERRORS:
             if conn:
@@ -1237,6 +1236,8 @@ def confirmar_restablecimiento():
             None
         )
 
+        app.logger.info("Restablecimiento terminado correctamente")
+        
         flash(
             f"La contraseña del usuario {usuario['username']} fue restablecida correctamente.",
             "success"
@@ -1248,7 +1249,7 @@ def confirmar_restablecimiento():
 
     return render_template(
         "superadmin/confirmar_restablecimiento.html",
-        password_temp = session["password_temp"]
+        password_temp=password_temp
     )
 
 @app.route(
