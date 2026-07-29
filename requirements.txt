@@ -5,3 +5,4 @@ psycopg[binary]==3.3.4
 qrcode==8.2
 reportlab==4.5.1
 gunicorn==26.0.0
+resend==2.21.0

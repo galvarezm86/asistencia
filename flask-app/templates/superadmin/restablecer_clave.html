@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}
+Superadministración
+{% endblock %}
+
+{% block content %}
+
+<div class="form-card centered-card">
+
+    
+    <h2>
+        Restablecer contraseña del usuario {{ usuario["username"] }}
+    </h2>
+    
+    <br>
+    
+    <p>
+        Escriba una contraseña temporal para el administrador.
+        El administrador deberá cambiarla obligatoriamente
+        en su próximo inicio de sesión.
+    </p>
+
+        <form
+            method="POST"
+            action="{{ url_for('restablecer_clave', usuario_id=usuario['id']) }}">
+
+        <input
+            type="hidden"
+            name="csrf_token"
+            value="{{ session.csrf_token }}"
+        >
+
+        <label for="password_temporal">
+            Contraseña temporal
+        </label>
+
+        <input
+            type="text"
+            id="password_temp"
+            name="password_temp"
+            required
+            minlength="8"
+            maxlength="64"
+            autocomplete="off"
+            autocapitalize="off"
+            autocorrect="off"
+            spellcheck="false"
+        >
+
+        <br><br>
+
+        <button
+            type="submit"
+            class="btn btn-primary"
+        >
+            Restablecer contraseña
+        </button>
+
+    </form>
+
+</div>
+
+{% endblock %}
+

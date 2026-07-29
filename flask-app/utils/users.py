@@ -1,4 +1,6 @@
 from werkzeug.security import generate_password_hash
+import secrets
+import string
 
 ROL_ADMIN = "admin"
 ROL_SUPERADMIN = "superadmin"
@@ -8,7 +10,8 @@ def _crear_o_actualizar_usuario(
     username,
     password,
     rol,
-    must_change_password
+    must_change_password,
+    restauracion_pendiente
 ):
     """
     Crea un usuario o actualiza su contraseña, rol y estado.
@@ -61,13 +64,15 @@ def _crear_o_actualizar_usuario(
             SET
                 password_hash = %s,
                 rol = %s,
-                must_change_password = %s
+                must_change_password = %s,
+                restauracion_pendiente = %s
             WHERE username = %s
             """,
             (
                 hashed_password,
                 rol,
                 must_change_password,
+                restauracion_pendiente,
                 username
             )
         )
@@ -79,18 +84,81 @@ def _crear_o_actualizar_usuario(
                 username,
                 password_hash,
                 rol,
-                must_change_password
+                must_change_password,
+                restauracion_pendiente
             )
-            VALUES (%s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s)
             """,
             (
                 username,
                 hashed_password,
                 rol,
-                must_change_password
+                must_change_password,
+                restauracion_pendiente
             )
         )
         usuario_creado = True
 
     return usuario_creado
 
+def generar_password_temporal(longitud=12):
+
+    if longitud < 8:
+        raise ValueError(
+            "La contraseña temporal debe tener al menos 8 caracteres"
+        )
+    
+    mayuscula = secrets.choice(string.ascii_uppercase)
+    minuscula = secrets.choice(string.ascii_lowercase)
+    numero = secrets.choice(string.digits)
+    simbolo = secrets.choice("!@#$%&*")
+    
+    resto = longitud - 4
+    
+    caracteres = (
+        string.ascii_letters +
+        string.digits +
+        "!@#$%&*"
+    )
+    
+    password = [
+        mayuscula,
+        minuscula,
+        numero,
+        simbolo
+    ]
+    
+    password.extend(
+        secrets.choice(caracteres)
+        for _ in range(resto)
+    )
+    
+    secrets.SystemRandom().shuffle(password)
+    
+    return "".join(password)
+
+
+def procesar_restauracion_superadmin(
+    conn,
+    usuario
+):
+    """
+    Genera y actualiza una contraseña temporal
+    para un superadmin.
+
+    Retorna:
+        str: contraseña temporal generada
+    """
+
+    password_temp = generar_password_temporal()
+
+    _crear_o_actualizar_usuario(
+        conn,
+        usuario["username"],
+        password_temp,
+        usuario["rol"],
+        True,
+        False
+    )
+
+    return password_temp

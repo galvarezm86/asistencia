@@ -58,9 +58,10 @@ CREATE TABLE IF NOT EXISTS usuarios (
 
     must_change_password BOOLEAN NOT NULL DEFAULT FALSE,
 
+    restauracion_pendiente BOOLEAN NOT NULL DEFAULT FALSE,
+
     activo BOOLEAN NOT NULL DEFAULT TRUE,
 
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 
 );
-

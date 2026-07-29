@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}Solicitar restablecimiento{% endblock %}
+
+{% block content %}
+
+<div class="form-card">
+
+
+
+    <h1>Restablecimiento de contraseña</h1>
+
+    <p>
+        Si olvidaste tu contraseña, puedes solicitar un restablecimiento
+        al administrador del sistema.
+    </p>
+
+    <p>
+        Ingresa tu nombre de usuario y se enviará una solicitud para revisar
+        tu acceso.
+    </p>
+
+    <form method="POST">
+
+        <input
+            type="hidden"
+            name="csrf_token"
+            value="{{ session.csrf_token }}">
+
+        <label for="username">
+            Nombre de usuario
+        </label>
+
+        <input
+            type="text"
+            id="username"
+            name="username"
+            required
+            autocomplete="username">
+
+        <br><br>
+        
+        <button
+            type="submit"
+            class="btn btn-primary"
+            >
+            Enviar solicitud
+        </button>
+
+    </form>
+
+    <br>
+    
+    <a href="{{ url_for('login') }}">
+        Volver al inicio de sesión
+    </a>
+    
+
+
+
+</div>
+
+{% endblock %}

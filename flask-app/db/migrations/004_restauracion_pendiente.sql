@@ -1,0 +1,2 @@
+ALTER TABLE usuarios
+ADD COLUMN restauracion_pendiente BOOLEAN NOT NULL DEFAULT FALSE;

@@ -6,77 +6,54 @@ Superadministración
 
 {% block content %}
 
-<div class="form-card centered-card">
+    <div class="form-card">
 
-    <h1>
-        Superadministración
-    </h1>
+        <h1>
+            Superadministración
+        </h1>
 
-    <br>
+        <br>
+
+        <p>
+            Desde este panel es posible realizar tareas de mantenimiento
+            exclusivas del superadministrador.
+        </p>
+
+        <br>
+
+        <hr>
+
+        <br>
     
-    <p>
-        Desde este panel es posible realizar tareas de mantenimiento
-        exclusivas del superadministrador.
-    </p>
-
-    <br>
+        <h2>
+            Restablecimiento de contraseñas
+        </h2>
     
-    <hr>
-
-    <br>
+        {% if solicitudes %}
     
-    <h2>
-        Restablecer contraseña del administrador
-    </h2>
+            {% for usuario in solicitudes %}
     
-    <br>
+                <div>
+                    {{ usuario["username"] }}
     
-    <p>
-        Escriba una contraseña temporal para el administrador.
-        El administrador deberá cambiarla obligatoriamente
-        en su próximo inicio de sesión.
-    </p>
-
-    <form
-        method="POST"
-        action="{{ url_for('superadmin') }}"
-    >
-
-        <input
-            type="hidden"
-            name="csrf_token"
-            value="{{ session.csrf_token }}"
-        >
-
-        <label for="password_temporal">
-            Contraseña temporal
-        </label>
-
-        <input
-            type="text"
-            id="admin_password_temp"
-            name="admin_password_temp"
-            required
-            minlength="8"
-            maxlength="64"
-            autocomplete="off"
-            autocapitalize="off"
-            autocorrect="off"
-            spellcheck="false"
-        >
-
-        <br><br>
-
-        <button
-            type="submit"
-            class="btn btn-primary"
-        >
-            Restablecer contraseña
-        </button>
-
-    </form>
-
-</div>
+                    <a href="{{ url_for(
+                        'restablecer_clave',
+                        usuario_id=usuario['id']
+                    ) }}">
+                        Atender
+                    </a>
+                </div>
+    
+            {% endfor %}
+    
+        {% else %}
+    
+            <p>
+                No hay solicitudes pendientes.
+            </p>
+    
+        {% endif %}
+    
+    </div>
 
 {% endblock %}
-

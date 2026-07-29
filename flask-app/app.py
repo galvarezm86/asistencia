@@ -19,8 +19,16 @@ from openpyxl.utils import get_column_letter
 from openpyxl.styles import Font, Alignment
 from werkzeug.security import check_password_hash
 from utils.db import get_db_connection
-from utils.users import _crear_o_actualizar_usuario
+from utils.users import (
+    _crear_o_actualizar_usuario,
+    generar_password_temporal,
+    procesar_restauracion_superadmin
+)
 from utils.users import ROL_ADMIN, ROL_SUPERADMIN
+from utils.email_service import (
+    send_password_reset_request,
+    send_superadmin_reset_email
+)
 
 
 # =============================================================================
@@ -768,6 +776,9 @@ def login():
                     "success"
                 )
 
+                if usuario["rol"] == ROL_SUPERADMIN:
+                    return redirect(url_for("superadmin"))
+                    
                 return redirect(url_for("admin"))
     
             flash(
@@ -796,6 +807,9 @@ def login():
 @app.route("/cambiar-clave", methods=["GET", "POST"])
 @login_required
 def cambiar_clave():
+
+    asegurar_csrf_token()
+    
     if request.method == "POST":
         validar_csrf()
         clave_actual = request.form.get("clave_actual")
@@ -848,7 +862,7 @@ def cambiar_clave():
                 flash("La nueva clave debe tener al menos 8 caracteres", "error")
                 return redirect(url_for("cambiar_clave"))
 
-            _crear_o_actualizar_usuario(conn, session["username"], clave_nueva, session["rol"], False)
+            _crear_o_actualizar_usuario(conn, session["username"], clave_nueva, session["rol"], False, False)
             conn.commit()
             session["must_change_password"] = False
             flash("Clave cambiada correctamente", "success")
@@ -864,10 +878,136 @@ def cambiar_clave():
         finally:
             if conn:
                 conn.close()
-    
-    asegurar_csrf_token()
 
     return render_template("admin/cambiar_clave.html")
+
+@app.route("/solicitar-restauracion", methods=["GET", "POST"])
+def solicitar_restauracion():
+
+    asegurar_csrf_token()
+
+    if request.method == "POST":
+
+        validar_csrf()
+
+        username = request.form.get("username", "").strip()
+
+        if not username:
+            flash("Debes ingresar tu nombre de usuario.", "error")
+            return redirect(url_for("solicitar_restauracion"))
+
+        conn = None
+
+        try:
+            conn = get_db_connection()
+
+            usuario = conn.execute(
+                """
+                SELECT id, username, rol, restauracion_pendiente
+                FROM usuarios
+                WHERE username = %s
+                """,
+                (username,)
+            ).fetchone()
+
+            # Respuesta genérica para no revelar usuarios existentes
+            if usuario:
+
+                if not usuario["restauracion_pendiente"]:
+
+                    if usuario["rol"] == ROL_SUPERADMIN:
+
+                        password_temp = procesar_restauracion_superadmin(
+                            conn,
+                            usuario
+                        )
+                        conn.commit()
+                        # Se confirma el cambio antes del envío del correo.
+                        # Si el envío falla, el usuario podrá solicitar nuevamente
+                        # una restauración.
+                        try:
+                            admin_email = os.environ.get("ADMIN_EMAIL")
+                            if not admin_email:
+                                raise ValueError("ADMIN_EMAIL no está configurado")
+
+                            send_superadmin_reset_email(
+                                usuario["username"],
+                                password_temp,
+                                admin_email
+                            )
+
+                        except Exception:
+
+                            app.logger.exception(
+                                "Error enviando correo de restauración de superadmin"
+                            )
+                            
+                            flash(
+                                "No fue posible completar el proceso. "
+                                "Por favor, envía nuevamente la solicitud de restablecimiento.",
+                                "error"
+                            )
+                            return redirect(url_for("solicitar_restauracion"))
+
+                    else:
+                        
+        
+                        conn.execute(
+                            """
+                            UPDATE usuarios
+                            SET restauracion_pendiente = TRUE
+                            WHERE id = %s
+                            """,
+                            (usuario["id"],)
+                        )
+        
+                        conn.commit()
+        
+                        try:
+                            panel_url = url_for("admin", _external=True)
+        
+                            #send_password_reset_request(
+                                #usuario["username"],
+                                #panel_url
+                            #)
+        
+                        except Exception:
+        
+                            app.logger.exception(
+                                "Error enviando solicitud de restauración"
+                            )
+                            app.logger.warning(
+                                "Solicitud de restauración creada pero correo no enviado para %s",
+                                usuario["username"]
+                            )
+        
+            flash(
+                "Si el usuario existe, se activará el procedimiento adecuado para restablecer la contraseña.",
+                "success"
+            )
+
+            return redirect(url_for("login"))
+
+        except DATABASE_ERRORS:
+
+            if conn:
+                conn.rollback()
+            app.logger.exception(
+                "Error al solicitar restauración de contraseña"
+            )
+
+            flash(
+                "Ocurrió un error al procesar la solicitud.",
+                "error"
+            )
+            return redirect(url_for("solicitar_restauracion"))
+
+        finally:
+            if conn:
+                conn.close()
+
+    return render_template("solicitar_restauracion.html")
+    
         
 @app.route("/logout", methods=["POST"])
 @login_required
@@ -896,27 +1036,117 @@ def admin():
         "admin/admin.html"
     )
 
-@app.route("/superadmin", methods=["GET", "POST"])
+@app.route("/superadmin")
 @login_required
 @change_password_required
 @superadmin_required
 def superadmin():
 
-    if request.method == "POST":
-        validar_csrf()
-        # Leer passwrd temporal
-        admin_password_temp = request.form.get("admin_password_temp")
-        # Validar que no sea vacío, longitud mínima
-        if not admin_password_temp or len(admin_password_temp) < 8:
-            flash("La contraseña debe tener al menos 8 caracteres", "error")
-            return redirect(url_for("superadmin"))
-        # Se guarda en la sesión
-        session["admin_password_temp"] = admin_password_temp
-        # Redirigir a confirmación
-        return redirect(url_for("confirmar_restablecimiento"))
-    
+    conn = None
+
+    try:
+        conn = get_db_connection()
+
+        solicitudes = conn.execute(
+            """
+            SELECT id, username
+            FROM usuarios
+            WHERE restauracion_pendiente = TRUE
+            ORDER BY username
+            """
+        ).fetchall()
+
+    except DATABASE_ERRORS:
+
+        app.logger.exception(
+            "Error cargando panel superadmin"
+        )
+
+        solicitudes = []
+
+    finally:
+
+        if conn:
+            conn.close()
+
     return render_template(
-        "superadmin/superadmin.html"
+        "superadmin/superadmin.html",
+        solicitudes=solicitudes
+    )
+    
+@app.route(
+    "/superadmin/restablecer-clave/<int:usuario_id>",
+    methods=["GET", "POST"]
+)
+@login_required
+@change_password_required
+@superadmin_required
+def restablecer_clave(usuario_id):
+
+    asegurar_csrf_token()
+
+    conn = None
+    
+    try:
+        conn = get_db_connection()
+        usuario = conn.execute(
+            """
+            SELECT id, username
+            FROM usuarios
+            WHERE id = %s
+            AND restauracion_pendiente = TRUE
+            """,
+            (usuario_id,)
+        ).fetchone()
+
+        if not usuario:
+            abort(404)
+
+    except DATABASE_ERRORS:
+        if conn:
+            conn.rollback()
+        app.logger.exception(
+            "Error cargando restablecimiento de clave"
+        )
+        flash("Ocurrió un error interno", "error")
+        return redirect(url_for("superadmin"))
+
+    finally:
+        if conn:
+            conn.close()
+    
+    if request.method == "POST":
+
+        validar_csrf()
+
+        password_temp = request.form.get(
+            "password_temp",
+            ""
+        ).strip()
+
+        if len(password_temp) < 8:
+            flash(
+                "La contraseña debe tener al menos 8 caracteres",
+                "error"
+            )
+            return redirect(
+                url_for(
+                    "restablecer_clave",
+                    usuario_id=usuario_id
+                )
+            )
+
+        session["usuario_restauracion_id"] = usuario_id
+        session["password_temp"] = password_temp
+
+        return redirect(
+            url_for("confirmar_restablecimiento")
+        )
+
+
+    return render_template(
+        "superadmin/restablecer_clave.html",
+        usuario=usuario
     )
 
 @app.route("/superadmin/confirmar-restablecimiento", methods=["GET", "POST"])
@@ -924,16 +1154,34 @@ def superadmin():
 @change_password_required
 @superadmin_required
 def confirmar_restablecimiento():
+
+    asegurar_csrf_token()
+    password_temp = session.get("password_temp")
+
+    if not password_temp:
+        flash(
+            "No existe una solicitud de restauración activa.",
+            "error"
+        )
+        return redirect(url_for("superadmin"))
+
+    return render_template(
+        "superadmin/confirmar_restablecimiento.html",
+        password_temp=password_temp
+    )
     
     if request.method == "POST":
         validar_csrf()
-        # Restablecer contraseña del admin
-        admin_password_temp = session.get("admin_password_temp")
-        if admin_password_temp is None:
-            flash("No se ha generado una contraseña temporal", "error")
+        password_temp = session.get("password_temp")
+        usuario_id = session.get("usuario_restauracion_id")
+        if password_temp is None or usuario_id is None:
+            flash(
+                "No se encontró información de restauración.",
+                "error"
+            )
             return redirect(url_for("superadmin"))
 
-        if len(admin_password_temp) < 8:
+        if len(password_temp) < 8:
             flash(
                 "La contraseña debe tener al menos 8 caracteres",
                 "error"
@@ -943,12 +1191,29 @@ def confirmar_restablecimiento():
         conn = None
         try:
             conn = get_db_connection()
+            usuario = conn.execute(
+                """
+                SELECT username, rol
+                FROM usuarios
+                WHERE id = %s
+                """,
+                (usuario_id,)
+            ).fetchone()
+            
+            if not usuario:
+                flash(
+                    "El usuario no existe.",
+                    "error"
+                )
+                return redirect(url_for("superadmin"))
+                
             _crear_o_actualizar_usuario(
                 conn,
-                "admin",
-                admin_password_temp,
-                ROL_ADMIN,
-                True
+                usuario["username"],
+                password_temp,
+                usuario["rol"],
+                True,
+                False
             )
             conn.commit()
 
@@ -964,12 +1229,16 @@ def confirmar_restablecimiento():
                 conn.close()
 
         session.pop(
-            "admin_password_temp",
+            "password_temp",
+            None
+        )
+        session.pop(
+            "usuario_restauracion_id",
             None
         )
 
         flash(
-            "La contraseña del administrador fue restablecida correctamente.",
+            f"La contraseña del usuario {usuario['username']} fue restablecida correctamente.",
             "success"
         )
     
@@ -979,7 +1248,7 @@ def confirmar_restablecimiento():
 
     return render_template(
         "superadmin/confirmar_restablecimiento.html",
-        admin_password_temp = session["admin_password_temp"]
+        password_temp = session["password_temp"]
     )
 
 @app.route(
@@ -993,7 +1262,11 @@ def cancelar_restablecimiento():
 
     validar_csrf()
     session.pop(
-        "admin_password_temp",
+        "password_temp",
+        None
+    )
+    session.pop(
+        "usuario_restauracion_id",
         None
     )
 
@@ -1323,6 +1596,7 @@ def regenerar_token():
 @login_required
 @change_password_required
 def asistencia_admin():
+
 
     desde = request.args.get("desde")
     hasta = request.args.get("hasta")
@@ -1781,6 +2055,7 @@ def reactivar_persona(id):
 @change_password_required
 def editar_persona(id):
 
+    asegurar_csrf_token()
     conn = None
 
     try:
