@@ -966,10 +966,10 @@ def solicitar_restauracion():
                         try:
                             panel_url = url_for("admin", _external=True)
         
-                            #send_password_reset_request(
-                                #usuario["username"],
-                                #panel_url
-                            #)
+                            send_password_reset_request(
+                                usuario["username"],
+                                panel_url
+                            )
         
                         except Exception:
         
@@ -1166,7 +1166,6 @@ def confirmar_restablecimiento():
         return redirect(url_for("superadmin"))
 
     if request.method == "POST":
-        app.logger.info("Entró al POST confirmar_restablecimiento")
         validar_csrf()
         password_temp = session.get("password_temp")
         usuario_id = session.get("usuario_restauracion_id")
@@ -1187,7 +1186,6 @@ def confirmar_restablecimiento():
         conn = None
         try:
             conn = get_db_connection()
-            app.logger.info("Se estableció conexión a la base de datos")
             usuario = conn.execute(
                 """
                 SELECT username, rol
@@ -1212,14 +1210,13 @@ def confirmar_restablecimiento():
                 True,
                 False
             )
-            app.logger.info("Se actualizó el usuario")
+            
             conn.commit()
-            app.logger.info("Se confirmó la transacción")
+            
 
         except DATABASE_ERRORS:
             if conn:
                 conn.rollback()
-            app.logger.exception("Error en la base de datos al restablecer contraseña")
             flash("Ocurrió un error interno", "error")
             return redirect(url_for("superadmin"))
 
@@ -1235,8 +1232,6 @@ def confirmar_restablecimiento():
             "usuario_restauracion_id",
             None
         )
-
-        app.logger.info("Restablecimiento terminado correctamente")
         
         flash(
             f"La contraseña del usuario {usuario['username']} fue restablecida correctamente.",
